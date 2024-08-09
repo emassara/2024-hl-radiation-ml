@@ -132,7 +132,7 @@ for prefix in events['prefix'].unique():
         max_pfu = event['max_pfu']
         EventCatalog[event_id] = date_start, date_end, max_pfu
 
-# for event, val in events.items():
+# for event, val in EventCatalog.items():
 #     print(event, val[0], val[1], val[2])
 
 # event_id      date_start          date_end            max_pfu
