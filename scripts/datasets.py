@@ -401,23 +401,41 @@ class GOESSGPS(PandasDataset):
         # data = data.sort_values(by='datetime')
         print('Rows                 : {:,}'.format(len(data)))
 
-        # data = data[data['AvgDiffProtonFlux'] > 0]
+        data = data[data[column] > 0.]
 
         super().__init__('GOES Solar and Galactic Proton Sensors (SGPS)', data, column, delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
 
     def normalize_data(self, data):
         if self.column == '>10MeV':
+            data = torch.log(data + 1e-8)
+            mean_log_data = -10.273473739624023
+            std_log_data = 1.8938413858413696
+            data = data - mean_log_data
+            data = data / std_log_data
             return data
         elif self.column == '>100MeV':
+            data = torch.log(data + 1e-8)
+            mean_log_data = -13.114526748657227
+            std_log_data = 0.6752610802650452
+            data = data - mean_log_data
+            data = data / std_log_data
             return data
         else:
             raise ValueError('Unsupported column: {}'.format(self.column))
     
     def unnormalize_data(self, data):
         if self.column == '>10MeV':
-            return data
+            mean_log_data = -10.273473739624023
+            std_log_data = 1.8938413858413696
+            data = data * std_log_data
+            data = data + mean_log_data
+            data = torch.exp(data) - 1e-8
         elif self.column == '>100MeV':
-            return data
+            mean_log_data = -13.114526748657227
+            std_log_data = 0.6752610802650452
+            data = data * std_log_data
+            data = data + mean_log_data
+            data = torch.exp(data) - 1e-8
         else:
             raise ValueError('Unsupported column: {}'.format(self.column))
 

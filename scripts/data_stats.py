@@ -24,8 +24,8 @@ def main():
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--rstn_radio_file', type=str, default='rstn-radio/rstn-radio.csv', help='RSTN Radio file')
     parser.add_argument('--num_samples', type=int, default=1000, help='Number of samples to use')
-    parser.add_argument('--instruments', nargs='+', default=['SDOML-lite', 'GOESXRS', 'GOESSGPS', 'RSTNRadio', 'BPD', 'CRaTER-D1D2'], help='Instruments')
-    # parser.add_argument('--instruments', nargs='+', default=['GOESSGPS'], help='Instruments')
+    # parser.add_argument('--instruments', nargs='+', default=['SDOML-lite', 'GOESXRS', 'GOESSGPS10', 'GOESSGPS100', 'RSTNRadio', 'BPD', 'CRaTER-D1D2'], help='Instruments')
+    parser.add_argument('--instruments', nargs='+', default=['GOESSGPS100'], help='Instruments')
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
 
     args = parser.parse_args()
@@ -62,10 +62,15 @@ def main():
                 ('normalized', GOESXRS(data_dir_goes_xrs, normalize=True), 'xrsb2_flux (normalized)'),
                 ('unnormalized', GOESXRS(data_dir_goes_xrs, normalize=False), 'xrsb2_flux')
             ]
-        elif instrument == 'GOESSGPS':
+        elif instrument == 'GOESSGPS10':
             runs = [ 
-                ('normalized', GOESSGPS(data_dir_goes_sgps, normalize=True), 'AvgDiffProtonFlux (normalized)'),
-                ('unnormalized', GOESSGPS(data_dir_goes_sgps, normalize=False), 'AvgDiffProtonFlux')
+                ('normalized', GOESSGPS(data_dir_goes_sgps, column='>10MeV', normalize=True), '>10MeV (normalized)'),
+                ('unnormalized', GOESSGPS(data_dir_goes_sgps, column='>10MeV', normalize=False), '>10MeV')
+            ]
+        elif instrument == 'GOESSGPS100':
+            runs = [ 
+                ('normalized', GOESSGPS(data_dir_goes_sgps, column='>100MeV', normalize=True), '>100MeV (normalized)'),
+                ('unnormalized', GOESSGPS(data_dir_goes_sgps, column='>100MeV', normalize=False), '>100MeV')
             ]
         elif instrument == 'RSTNRadio':
             runs = [ 
