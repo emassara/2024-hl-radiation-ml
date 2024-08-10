@@ -173,8 +173,8 @@ def main():
         ims['biosentinel'] = ax.axvline(date_start, color='black', linestyle='-', linewidth=1)
 
         ax = axs['goessgps10']
-        # ax.set_title('GOES SGPS proton flux (>10MeV)')
-        ax.text(0.005, 0.96, 'GOES SGPS proton flux (>10MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+        # ax.set_title('GOES solar & galactic protons (>10MeV)')
+        ax.text(0.005, 0.96, 'GOES solar & galactic protons (>10MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
         ax.set_ylabel('part./(cm^2 s sr)')
         ax.yaxis.set_label_position("right")
         goessgps10_dates, goessgps10_values = goessgps10.get_series(date_start, date_end, delta_minutes=args.delta_minutes)
@@ -190,8 +190,8 @@ def main():
         ims['goessgps10'] = ax.axvline(date_start, color='black', linestyle='-', linewidth=1)
 
         ax = axs['goessgps100']
-        # ax.set_title('GOES SGPS proton flux (>10MeV)')
-        ax.text(0.005, 0.96, 'GOES SGPS proton flux (>100MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+        # ax.set_title('GOES solar & galactic protons (>10MeV)')
+        ax.text(0.005, 0.96, 'GOES solar & galactic protons (>100MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
         ax.set_ylabel('part./(cm^2 s sr)')
         ax.yaxis.set_label_position("right")
         goessgps100_dates, goessgps100_values = goessgps100.get_series(date_start, date_end, delta_minutes=args.delta_minutes)
@@ -207,8 +207,8 @@ def main():
         ims['goessgps100'] = ax.axvline(date_start, color='black', linestyle='-', linewidth=1)
 
         ax = axs['goesxrs']
-        # ax.set_title('GOES XRS X-ray flux')
-        ax.text(0.005, 0.96, 'GOES XRS x-ray flux', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+        # ax.set_title('GOES X-ray flux')
+        ax.text(0.005, 0.96, 'GOES X-ray flux', ha='left', va='top', transform=ax.transAxes, fontsize=12)
         ax.set_ylabel('W/m^2')
         ax.yaxis.set_label_position("right")
         goes_dates, goes_values = goesxrs.get_series(date_start, date_end, delta_minutes=args.delta_minutes)
