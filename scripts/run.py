@@ -386,6 +386,9 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     goessgps100_ground_truth_dates, goessgps100_ground_truth_values = dataset_goes_sgps100.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
     goesxrs_ground_truth_dates, goesxrs_ground_truth_values = dataset_goes_xrs.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
     biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_biosentinel.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
+
+    goessgps10_ground_truth_values = dataset_goes_sgps10.unnormalize_data(goessgps10_ground_truth_values)
+    goessgps100_ground_truth_values = dataset_goes_sgps100.unnormalize_data(goessgps100_ground_truth_values)
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
     biosentinel_ground_truth_values = dataset_biosentinel.unnormalize_data(biosentinel_ground_truth_values)
 
