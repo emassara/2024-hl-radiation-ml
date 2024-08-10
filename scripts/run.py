@@ -375,6 +375,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     goessgps100_predictions = prediction_batch[:, :, 1]
     goesxrs_predictions = prediction_batch[:, :, 2]
     biosentinel_predictions = prediction_batch[:, :, 3]
+    
     goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
     goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
     goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
