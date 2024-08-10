@@ -105,7 +105,7 @@ class RadRecurrent(nn.Module):
 
 
 class RadRecurrentWithSDO(nn.Module):
-    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_channels=6, sdo_dim=1024, context_window=10, prediction_window=10):
+    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_channels=6, sdo_dim=1024, context_window=10, prediction_window=10, sdo_only_context=False):
         super().__init__()
         self.data_dim = data_dim
         self.lstm_dim = lstm_dim
@@ -115,6 +115,7 @@ class RadRecurrentWithSDO(nn.Module):
         self.sdo_dim = sdo_dim
         self.context_window = context_window # Not used within model, only for reference
         self.prediction_window = prediction_window # Not used within model, only for reference
+        self.sdo_only_context = sdo_only_context
 
         self.sdo_embedding = SDOEmbedding(channels=sdo_channels, embedding_dim=sdo_dim)
         self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
@@ -135,6 +136,9 @@ class RadRecurrentWithSDO(nn.Module):
     def forward_context(self, sdo, data):
         # sdo has shape (batch_size, seq_len, channels, size, size)
         # data has shape (batch_size, seq_len, self.data_dim)
+        if self.sdo_only_context:
+            data = torch.zeros_like(data)
+
         batch_size = sdo.shape[0]
         seq_len = sdo.shape[1]
         channels = sdo.shape[2]

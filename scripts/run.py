@@ -802,6 +802,7 @@ def main():
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')
     parser.add_argument('--sdo_dir', type=str, default='sdoml-lite-biosentinel', help='SDOML-lite-biosentinel directory')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
+    parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context')
     parser.add_argument('--radlab_file', type=str, default='radlab/RadLab-20240625-duck.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
@@ -939,6 +940,7 @@ def main():
                 print('Next epoch    : {:,}'.format(epoch_start+1))
                 print('Next iteration: {:,}'.format(iteration+1))
             else:
+                print('Creating new model')
                 if args.model_type == 'RadRecurrent':
                     model_data_dim = 4
                     model_lstm_dim = 1024
@@ -956,7 +958,7 @@ def main():
                     model_sdo_channels = 6
                     model_context_window = args.context_window
                     model_prediction_window = args.prediction_window
-                    model = RadRecurrentWithSDO(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, sdo_channels=model_sdo_channels, sdo_dim=model_sdo_dim, context_window=model_context_window, prediction_window=model_prediction_window)
+                    model = RadRecurrentWithSDO(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, sdo_channels=model_sdo_channels, sdo_dim=model_sdo_dim, context_window=model_context_window, prediction_window=model_prediction_window, sdo_only_context=args.sdo_only_context)
                 else:
                     raise ValueError('Unknown model type: {}'.format(args.model_type))
                 
