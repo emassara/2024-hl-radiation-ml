@@ -455,7 +455,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
                                     ['goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100'],
                                     ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
-                                    ], figsize=(20, 12.5), height_ratios=[2, 1, 1, 1, 1])
+                                    ], figsize=(20, 12.5), height_ratios=[1, 1, 1, 1, 1])
     elif isinstance(model, RadRecurrent):
         fig, axs = plt.subplot_mosaic([['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel'],
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
@@ -469,7 +469,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     colors = {}
     colors['biosentinel'] = 'mediumblue'
     colors['goessgps10'] = 'darkgreen'
-    colors['goessgps100'] = 'darkred'
+    colors['goessgps100'] = 'darkorange'
     colors['goesxrs'] = 'purple'
     colors['prediction'] = 'red'
     colors['prediction_mean'] = 'darkred'
@@ -515,7 +515,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['biosentinel_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
     ims['biosentinel_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
     ims['biosentinel_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
-    ims['biosentinel_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['biosentinel'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
+    # ims['biosentinel_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['biosentinel'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
     ims['biosentinel_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
     ims['biosentinel_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
@@ -547,7 +547,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps10_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
     ims['goessgps10_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
     ims['goessgps10_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
-    ims['goessgps10_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps10'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
+    # ims['goessgps10_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps10'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
     ims['goessgps10_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
     ims['goessgps10_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
@@ -579,7 +579,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps100_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
     ims['goessgps100_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
     ims['goessgps100_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
-    ims['goessgps100_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps100'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
+    # ims['goessgps100_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps100'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
     ims['goessgps100_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
     ims['goessgps100_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
@@ -685,22 +685,31 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
             ims['biosentinel_context_start'].set_xdata([context_start_date, context_start_date])
             ims['biosentinel_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
             ims['biosentinel_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
-            ims['biosentinel_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['biosentinel'][0]))
+            # ims['biosentinel_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['biosentinel'][0]))
 
             ims['goessgps10_context_start'].set_xdata([context_start_date, context_start_date])
             ims['goessgps10_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
             ims['goessgps10_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
-            ims['goessgps10_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goessgps10'][0]))
+            # ims['goessgps10_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goessgps10'][0]))
 
             ims['goessgps100_context_start'].set_xdata([context_start_date, context_start_date])
             ims['goessgps100_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
             ims['goessgps100_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
-            ims['goessgps100_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goessgps100'][0]))
+            # ims['goessgps100_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goessgps100'][0]))
 
             ims['goesxrs_context_start'].set_xdata([context_start_date, context_start_date])
             ims['goesxrs_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
             ims['goesxrs_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
             ims['goesxrs_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goesxrs'][0]))
+
+            if isinstance(model, RadRecurrentWithSDO):
+                sdo_data = context_sdo[-1]
+                for i, c in enumerate(channels):
+                    if sdo_data is None:
+                        # ims[c].set_data(np.zeros([512,512]))
+                        pass
+                    else:
+                        ims[c].set_data(dataset_sdo.unnormalize(sdo_data[i].cpu().numpy(), c))
 
             prediction_dates_primary = prediction_dates[:model.prediction_window+1]
             prediction_dates_secondary = prediction_dates[model.prediction_window:]
