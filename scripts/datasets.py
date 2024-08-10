@@ -11,6 +11,7 @@ import tarfile
 import pickle
 from functools import lru_cache
 import duckdb
+import math
 
 
 class SDOMLlite(Dataset):
@@ -183,6 +184,25 @@ class SDOMLlite(Dataset):
             channels = np.stack(channels)
             channels = torch.from_numpy(channels)
         return channels
+
+    # For plotting purposes only, produced values cannot be used for any scientific-quality data analysis
+    def unnormalize(self, data, channel):
+        sqrt_aia_cutoff = {}
+        sqrt_aia_cutoff['aia_0131'] = math.sqrt(2652.1470)
+        sqrt_aia_cutoff['aia_0171'] = math.sqrt(22816.1035)
+        sqrt_aia_cutoff['aia_0193'] = math.sqrt(23919.7168)
+        sqrt_aia_cutoff['aia_0211'] = math.sqrt(13458.3203)
+        sqrt_aia_cutoff['aia_1600'] = math.sqrt(3399.5896)
+        if channel == 'hmi_m':
+            mask = data > 0.05
+            data = 2 * (data - 0.5)
+            data = data * 1500 
+            data = data * mask
+        else:
+            c = sqrt_aia_cutoff[channel]
+            data = data * c
+            data = data ** 2.
+        return data
 
 
 class PandasDataset(Dataset):

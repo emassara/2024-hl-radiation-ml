@@ -17,33 +17,13 @@ from events import EventCatalog
 
 matplotlib.use('Agg')
 
-sqrt_aia_cutoff = {}
-sqrt_aia_cutoff['aia_0131'] = np.sqrt(2652.1470)
-sqrt_aia_cutoff['aia_0171'] = np.sqrt(22816.1035)
-sqrt_aia_cutoff['aia_0193'] = np.sqrt(23919.7168)
-sqrt_aia_cutoff['aia_0211'] = np.sqrt(13458.3203)
-sqrt_aia_cutoff['aia_1600'] = np.sqrt(3399.5896)
-
-cms = {}
-cms['hmi_m'] = sunpycm.cmlist.get('hmimag')
-cms['aia_0131'] = sunpycm.cmlist.get('sdoaia131')
-cms['aia_0171'] = sunpycm.cmlist.get('sdoaia171')
-cms['aia_0193'] = sunpycm.cmlist.get('sdoaia193')
-cms['aia_0211'] = sunpycm.cmlist.get('sdoaia211')
-cms['aia_1600'] = sunpycm.cmlist.get('sdoaia1600')
-
-
-def unnormalize(data, channel):
-    if channel == 'hmi_m':
-        mask = data > 0.05
-        data = 2 * (data - 0.5)
-        data = data * 1500 
-        data = data * mask
-    else:
-        c = sqrt_aia_cutoff[channel]
-        data = data * c
-        data = data ** 2.
-    return data
+sdo_cms = {}
+sdo_cms['hmi_m'] = sunpycm.cmlist.get('hmimag')
+sdo_cms['aia_0131'] = sunpycm.cmlist.get('sdoaia131')
+sdo_cms['aia_0171'] = sunpycm.cmlist.get('sdoaia171')
+sdo_cms['aia_0193'] = sunpycm.cmlist.get('sdoaia193')
+sdo_cms['aia_0211'] = sunpycm.cmlist.get('sdoaia211')
+sdo_cms['aia_1600'] = sunpycm.cmlist.get('sdoaia1600')
 
 
 def main():
@@ -137,25 +117,24 @@ def main():
 
         hours_locator = matplotlib.dates.HourLocator(interval=1)
 
-        vmin = {}
-        vmax = {}
+        sdo_vmin = {}
+        sdo_vmax = {}
         sdo_sample, _ = sdo[0]
         for i, c in enumerate(channels):
             if c == 'hmi_m':
-                vmin[c], vmax[c] = -1500, 1500
+                sdo_vmin[c], sdo_vmax[c] = -1500, 1500
             else:
-                vmin[c], vmax[c] = np.percentile(unnormalize(sdo_sample[i], c), (0.2, 98))
+                sdo_vmin[c], sdo_vmax[c] = np.percentile(sdo.unnormalize(sdo_sample[i], c), (0.2, 98))
 
         ims = {}
         for c in channels:
-            cmap = cms[c]
+            cmap = sdo_cms[c]
             # cmap = 'viridis'    
             ax = axs[c]
             ax.set_title('SDOML-lite / {}'.format(c))
             ax.set_xticks([])
             ax.set_yticks([])
-            im = ax.imshow(np.zeros([512,512]), vmin=vmin[c], vmax=vmax[c], cmap=cmap)
-            ims[c] = im
+            ims[c] = ax.imshow(np.zeros([512,512]), vmin=sdo_vmin[c], vmax=sdo_vmax[c], cmap=cmap)
 
         ax = axs['biosentinel']
         # ax.set_title('Biosentinel absorbed dose rate')
@@ -248,7 +227,7 @@ def main():
                         # ims[c].set_data(np.zeros([512,512]))
                         pass
                     else:
-                        ims[c].set_data(unnormalize(sdo_data[i].cpu().numpy(), c))
+                        ims[c].set_data(sdo.unnormalize(sdo_data[i].cpu().numpy(), c))
 
             # plt.tight_layout()
             plt.tight_layout(rect=[0, 0, 1, 0.97])
