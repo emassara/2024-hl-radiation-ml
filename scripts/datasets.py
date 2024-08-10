@@ -14,10 +14,16 @@ import duckdb
 
 
 class SDOMLlite(Dataset):
-    def __init__(self, data_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], date_start=None, date_end=None, date_exclusions=None):
+    def __init__(self, data_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], date_start=None, date_end=None, date_exclusions=None, random_data=False):
         self.data_dir = data_dir
         self.channels = channels
         print('\nSDOML-lite')
+
+        self.random_data = random_data
+        if random_data:
+            self.random_data_shape = torch.Size([len(self.channels), 512, 512])
+            print('Random data: True')
+
         print('Directory  : {}'.format(self.data_dir))
 
         self.data = WebDataset(data_dir)
@@ -56,37 +62,40 @@ class SDOMLlite(Dataset):
         else:
             date_exclusions_postfix = ''
 
-        self.dates = []
-        dates_cache = 'dates_index_{}_{}_{}{}'.format('_'.join(self.channels), self.date_start.isoformat(), self.date_end.isoformat(), date_exclusions_postfix)
-        dates_cache = os.path.join(self.data_dir, dates_cache)
-        if os.path.exists(dates_cache):
-            print('Loading dates from cache: {}'.format(dates_cache))
-            with open(dates_cache, 'rb') as f:
-                self.dates = pickle.load(f)
-        else:        
-            for i in tqdm(range(total_steps), desc='Checking complete channels'):
-                date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
-                exists = True
-                prefix = self.date_to_prefix(date)
-                data = self.data.index.get(prefix)
-                if data is None:
-                    exists = False
-                else:
-                    for channel in self.channels:
-                        postfix = channel+'.npy'
-                        if postfix not in data:
-                            exists = False
-                            break
-                if self.date_exclusions is not None:
-                    for exclusion_date_start, exclusion_date_end in self.date_exclusions:
-                        if (date >= exclusion_date_start) and (date < exclusion_date_end):
-                            exists = False
-                            break
-                if exists:
-                    self.dates.append(date)
-            print('Saving dates to cache: {}'.format(dates_cache))
-            with open(dates_cache, 'wb') as f:
-                pickle.dump(self.dates, f)
+        if self.random_data:
+            self.dates = [self.date_start + datetime.timedelta(minutes=self.delta_minutes*i) for i in range(total_steps)]
+        else:
+            self.dates = []
+            dates_cache = 'dates_index_{}_{}_{}{}'.format('_'.join(self.channels), self.date_start.isoformat(), self.date_end.isoformat(), date_exclusions_postfix)
+            dates_cache = os.path.join(self.data_dir, dates_cache)
+            if os.path.exists(dates_cache):
+                print('Loading dates from cache: {}'.format(dates_cache))
+                with open(dates_cache, 'rb') as f:
+                    self.dates = pickle.load(f)
+            else:        
+                for i in tqdm(range(total_steps), desc='Checking complete channels'):
+                    date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
+                    exists = True
+                    prefix = self.date_to_prefix(date)
+                    data = self.data.index.get(prefix)
+                    if data is None:
+                        exists = False
+                    else:
+                        for channel in self.channels:
+                            postfix = channel+'.npy'
+                            if postfix not in data:
+                                exists = False
+                                break
+                    if self.date_exclusions is not None:
+                        for exclusion_date_start, exclusion_date_end in self.date_exclusions:
+                            if (date >= exclusion_date_start) and (date < exclusion_date_end):
+                                exists = False
+                                break
+                    if exists:
+                        self.dates.append(date)
+                print('Saving dates to cache: {}'.format(dates_cache))
+                with open(dates_cache, 'wb') as f:
+                    pickle.dump(self.dates, f)
             
         if len(self.dates) == 0:
             raise RuntimeError('No frames found with given list of channels')
@@ -98,6 +107,7 @@ class SDOMLlite(Dataset):
         print('Frames available: {:,}'.format(len(self.dates)))
         print('Frames dropped  : {:,}'.format(total_steps - len(self.dates)))
 
+
     @lru_cache(maxsize=100000)
     def prefix_to_date(self, prefix):
         return datetime.datetime.strptime(prefix, '%Y/%m/%d/%H%M')
@@ -107,10 +117,14 @@ class SDOMLlite(Dataset):
         return date.strftime('%Y/%m/%d/%H%M')
 
     def find_date_range(self):
-        prefix_start = self.data.prefixes[0]
-        prefix_end = self.data.prefixes[-1]
-        date_start = self.prefix_to_date(prefix_start)
-        date_end = self.prefix_to_date(prefix_end)
+        if self.random_data:
+            date_start = datetime.datetime.fromisoformat('2010-05-13T00:00:00')
+            date_end = datetime.datetime.fromisoformat('2024-07-27T00:00:00')
+        else:
+            prefix_start = self.data.prefixes[0]
+            prefix_end = self.data.prefixes[-1]
+            date_start = self.prefix_to_date(prefix_start)
+            date_end = self.prefix_to_date(prefix_end)
         return date_start, date_end
     
     def __repr__(self):
@@ -145,15 +159,19 @@ class SDOMLlite(Dataset):
                 if (date >= exclusion_date_start) and (date < exclusion_date_end):
                     raise RuntimeError('Should not happen')
 
-        prefix = self.date_to_prefix(date)
-        data = self.data[prefix]
-        channels = []
-        for channel in self.channels:
-            file = channel+'.npy'
-            channel_data = data[file]
-            channels.append(channel_data)
-        channels = np.stack(channels)
-        channels = torch.from_numpy(channels)
+        if self.random_data:
+            # print('SDOML-lite returning random data for date: {}'.format(date))
+            channels = torch.randn(self.random_data_shape)
+        else:
+            prefix = self.date_to_prefix(date)
+            data = self.data[prefix]
+            channels = []
+            for channel in self.channels:
+                file = channel+'.npy'
+                channel_data = data[file]
+                channels.append(channel_data)
+            channels = np.stack(channels)
+            channels = torch.from_numpy(channels)
         return channels
 
 
@@ -314,7 +332,7 @@ class PandasDataset(Dataset):
         return dates, values
 
 
-class ConcatDataset(Dataset):
+class UnionDataset(Dataset):
     def __init__(self, datasets):
         self.datasets = datasets
 
@@ -332,12 +350,13 @@ class ConcatDataset(Dataset):
                     self.date_start = date
                 if date > self.date_end:
                     self.date_end = date
-                if date in self.dates_set:
-                    raise ValueError('Overlap in dates_set between datasets')
+                # if date in self.dates_set:
+                #     raise ValueError('Overlap in dates_set between datasets')
                 self.dates_set.add(date)
 
     def __len__(self):
-        return sum([len(dataset) for dataset in self.datasets])
+        # return sum([len(dataset) for dataset in self.datasets])
+        return len(self.dates_set)
 
     def __getitem__(self, index):
         if isinstance(index, datetime.datetime):

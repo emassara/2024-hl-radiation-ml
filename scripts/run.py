@@ -18,7 +18,7 @@ import traceback
 import matplotlib.animation as animation
 import glob
 
-from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, ConcatDataset
+from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO
 from events import EventCatalog
 
@@ -241,7 +241,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=context_start, date_end=date_end)
     dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=context_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
-        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=context_start, date_end=date_end)
+        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=context_start, date_end=date_end, random_data=args.sdo_random_data)
         dataset_sequences = Sequences([dataset_sdo, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
@@ -315,7 +315,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=date_end)
     dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=full_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
-        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=date_end)
+        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=date_end, random_data=args.sdo_random_data)
         full_start = max(dataset_sdo.date_start, dataset_goes_xrs.date_start, dataset_biosentinel.date_start) # need to reassign because data availability may change the start date
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
         dataset_sequences = Sequences([dataset_sdo, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
@@ -525,6 +525,7 @@ def main():
     parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')
     parser.add_argument('--sdo_dir', type=str, default='sdoml-lite-biosentinel', help='SDOML-lite-biosentinel directory')
+    parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
     parser.add_argument('--radlab_file', type=str, default='radlab/RadLab-20240625-duck.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
@@ -600,14 +601,14 @@ def main():
                     date_exclusions.append((exclusion_start, exclusion_end))
 
                     if args.model_type == 'RadRecurrentWithSDO':
-                        datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end))
+                        datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
                     datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end))
                     datasets_biosentinel_valid.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end))
 
             if args.model_type == 'RadRecurrentWithSDO':
-                dataset_sdo_valid = ConcatDataset(datasets_sdo_valid)
-            dataset_goes_xrs_valid = ConcatDataset(datasets_goes_xrs_valid)
-            dataset_biosentinel_valid = ConcatDataset(datasets_biosentinel_valid)
+                dataset_sdo_valid = UnionDataset(datasets_sdo_valid)
+            dataset_goes_xrs_valid = UnionDataset(datasets_goes_xrs_valid)
+            dataset_biosentinel_valid = UnionDataset(datasets_biosentinel_valid)
 
             if args.model_type == 'RadRecurrentWithSDO':
                 dataset_sequences_valid = Sequences([dataset_sdo_valid, dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
@@ -616,7 +617,7 @@ def main():
 
             # For training and validation
             if args.model_type == 'RadRecurrentWithSDO':
-                dataset_sdo = SDOMLlite(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions)
+                dataset_sdo = SDOMLlite(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
             dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions)
             dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions)
             if args.model_type == 'RadRecurrentWithSDO':
