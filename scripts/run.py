@@ -327,13 +327,13 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
         if len(dataset_sequences) == 0:
             return
         context_sequence = dataset_sequences[0]
-        context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[3]]
+        context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[5]]
     elif isinstance(model, RadRecurrent):
         dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
         context_sequence = dataset_sequences[0]
-        context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[2]]
+        context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[4]]
     else:
         raise ValueError('Unknown model type: {}'.format(model))
 
@@ -414,7 +414,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         if len(dataset_sequences) == 0:
             return
         full_sequence = dataset_sequences[0]
-        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[3]]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[5]]
     elif isinstance(model, RadRecurrent):
         full_start = max(dataset_goes_xrs.date_start, dataset_biosentinel.date_start)
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
@@ -422,7 +422,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         if len(dataset_sequences) == 0:
             return
         full_sequence = dataset_sequences[0]
-        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[2]]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[4]]
     else:
         raise ValueError('Unknown model type: {}'.format(model))
 
