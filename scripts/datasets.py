@@ -479,12 +479,14 @@ class GOESSGPS(PandasDataset):
             data = data * std_log_data
             data = data + mean_log_data
             data = torch.exp(data) - 1e-8
+            return data
         elif self.column == '>100MeV':
             mean_log_data = -13.114526748657227
             std_log_data = 0.6752610802650452
             data = data * std_log_data
             data = data + mean_log_data
             data = torch.exp(data) - 1e-8
+            return data
         else:
             raise ValueError('Unsupported column: {}'.format(self.column))
 
