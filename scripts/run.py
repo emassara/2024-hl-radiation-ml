@@ -17,6 +17,7 @@ import shutil
 import traceback
 import matplotlib.animation as animation
 import glob
+import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO
@@ -791,7 +792,7 @@ def main():
     parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay')
     parser.add_argument('--valid_proportion', type=float, default=0.05, help='Validation frequency in iterations')
     parser.add_argument('--device', type=str, default='cpu', help='Device')
-    parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
+    parser.add_argument('--lstm_depth', type=int, default=5, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date')
