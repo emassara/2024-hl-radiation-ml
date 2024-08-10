@@ -158,7 +158,7 @@ def save_test_file(prediction_dates, goessgps10_predictions, goessgps100_predict
     biosentinel_prediction_std = np.std(biosentinel_predictions, axis=0)
 
     with open(file_name, 'w') as f:
-        f.write('date,goessgs10_prediction_mean,goessgps10_prediction_std,goessgps100_prediction_mean,goessgps100_prediction_std,goesxrs_prediction_mean,goesxrs_prediction_std,biosentinel_prediction_mean,biosentinel_prediction_std,ground_truth_goesxrs,ground_truth_biosentinel\n')
+        f.write('date,goessgps10_prediction_mean,goessgps10_prediction_std,goessgps100_prediction_mean,goessgps100_prediction_std,goesxrs_prediction_mean,goesxrs_prediction_std,biosentinel_prediction_mean,biosentinel_prediction_std,goessgps10_ground_truth,goessgps100_ground_truth,goesxrs_ground_truth,biosentinel_ground_truth\n')
         for i in range(len(prediction_dates)):
             date = prediction_dates[i]
             goessgps10_prediction_mean_value = goessgps10_prediction_mean[i]
@@ -190,12 +190,12 @@ def save_test_file(prediction_dates, goessgps10_predictions, goessgps100_predict
             else:
                 biosentinel_ground_truth_value = float('nan')
 
-            f.write('{},{},{},{},{},{},{},{},{},{},{}\n'.format(date, goessgps10_prediction_mean_value, goessgps10_prediction_std_value, goessgps100_prediction_mean_value, goessgps100_prediction_std_value, goesxrs_prediction_mean_value, goesxrs_prediction_std_value, biosentinel_prediction_mean_value, biosentinel_prediction_std_value, goesxrs_ground_truth_value, biosentinel_ground_truth_value))
+            f.write('{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(date, goessgps10_prediction_mean_value, goessgps10_prediction_std_value, goessgps100_prediction_mean_value, goessgps100_prediction_std_value, goesxrs_prediction_mean_value, goesxrs_prediction_std_value, biosentinel_prediction_mean_value, biosentinel_prediction_std_value, goessgps10_ground_truth_value, goessgps100_ground_truth_value, goesxrs_ground_truth_value, biosentinel_ground_truth_value))
             
 
 def save_test_plot(context_dates, prediction_dates, training_prediction_window_end, goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, biosentinel_predictions, goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name, title=None):
     print('Saving test plot: {}'.format(file_name))
-    fig, axs = plt.subplot_mosaic([['biosentinel'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1,1,1])
+    fig, axs = plt.subplot_mosaic([['biosentinel'],['goessgps10'],['goessgps100'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1,1,1])
 
     num_samples = goesxrs_predictions.shape[0]
 
@@ -203,6 +203,8 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     hours_locator = matplotlib.dates.HourLocator(interval=1)
     colors = {}
     colors['biosentinel'] = 'mediumblue'
+    colors['goessgps10'] = 'darkgreen'
+    colors['goessgps100'] = 'darkred'
     colors['goesxrs'] = 'purple'
     colors['prediction'] = 'red'
     prediction_alpha = 0.08
@@ -453,7 +455,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
                                     ['goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100'],
                                     ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
-                                    ], figsize=(20, 12.5), height_ratios=[2.5, 1, 1, 1, 1])
+                                    ], figsize=(20, 12.5), height_ratios=[2, 1, 1, 1, 1])
     elif isinstance(model, RadRecurrent):
         fig, axs = plt.subplot_mosaic([['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel'],
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
@@ -466,6 +468,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     hours_locator = matplotlib.dates.HourLocator(interval=1)
     colors = {}
     colors['biosentinel'] = 'mediumblue'
+    colors['goessgps10'] = 'darkgreen'
+    colors['goessgps100'] = 'darkred'
     colors['goesxrs'] = 'purple'
     colors['prediction'] = 'red'
     colors['prediction_mean'] = 'darkred'
@@ -591,8 +595,9 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ax.set_ylim(ylims['goessgps100'])
 
     ax = axs['goesxrs']
-    ax.set_title('GOES XRS')
-    ax.set_ylabel('X-ray flux\n[W/m^2]')
+    # ax.set_title('GOES XRS')
+    ax.text(0.005, 0.96, 'GOES X-ray flux', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    ax.set_ylabel('W/m^2')
     ax.yaxis.set_label_position("right")
     ax.plot(goesxrs_ground_truth_dates, goesxrs_ground_truth_values, color=colors['goesxrs'], alpha=0.75, label='Ground truth')
     # ax.tick_params(rotation=45)
