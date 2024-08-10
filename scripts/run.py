@@ -317,8 +317,8 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     # predict start
 
     context_start = date_start - datetime.timedelta(minutes=(model.context_window - 1) * args.delta_minutes)
-    dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>10 MeV')
-    dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>100 MeV')
+    dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>10MeV')
+    dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>100MeV')
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=context_start, date_end=date_end)
     dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=context_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
@@ -402,8 +402,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
 
     full_start = date_start - datetime.timedelta(minutes=(model.context_window - 1) * args.delta_minutes)
     full_end = date_end
-    dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>10 MeV')
-    dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>100 MeV')
+    dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>10MeV')
+    dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>100MeV')
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=date_end)
     dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=full_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
