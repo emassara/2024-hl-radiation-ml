@@ -412,6 +412,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
         dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
+            print('No data available for full sequence to generate video')
             return
         full_sequence = dataset_sequences[0]
         full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[5]]
@@ -420,6 +421,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
         dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
+            print('No data available for full sequence to generate video')
             return
         full_sequence = dataset_sequences[0]
         full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[4]]
