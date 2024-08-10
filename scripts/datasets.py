@@ -63,7 +63,17 @@ class SDOMLlite(Dataset):
             date_exclusions_postfix = ''
 
         if self.random_data:
-            self.dates = [self.date_start + datetime.timedelta(minutes=self.delta_minutes*i) for i in range(total_steps)]
+            self.dates = []
+            for i in range(total_steps):
+                date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
+                exists = True
+                if self.date_exclusions is not None:
+                    for exclusion_date_start, exclusion_date_end in self.date_exclusions:
+                        if (date >= exclusion_date_start) and (date < exclusion_date_end):
+                            exists = False
+                            break
+                if exists:
+                    self.dates.append(date)
         else:
             self.dates = []
             dates_cache = 'dates_index_{}_{}_{}{}'.format('_'.join(self.channels), self.date_start.isoformat(), self.date_end.isoformat(), date_exclusions_postfix)
