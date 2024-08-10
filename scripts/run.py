@@ -462,7 +462,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
                                     ['goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100'],
                                     ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
-                                    ], figsize=(20, 12.5), height_ratios=[1, 1, 1, 1, 1])
+                                    ], figsize=(20, 12.5), height_ratios=[1, 1, 0.5, 0.5, 0.5])
     elif isinstance(model, RadRecurrent):
         fig, axs = plt.subplot_mosaic([['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel'],
                                     ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
@@ -539,7 +539,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
 
     ax = axs['goessgps10']
     # ax.set_title('GOES solar & galactic protons (>10MeV)')
-    ax.text(0.005, 0.96, 'GOES solar & galactic protons (>10MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    ax.text(0.005, 0.96, 'GOES solar & galactic protons (>10 MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
     ax.set_ylabel('part./(cm^2 s sr)')
     ax.yaxis.set_label_position("right")
     ax.plot(goessgps10_ground_truth_dates, goessgps10_ground_truth_values, color=colors['goessgps10'], alpha=0.75, label='Ground truth')
@@ -556,8 +556,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps10_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
     # ims['goessgps10_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps10'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
-    ims['goessgps10_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
-    ims['goessgps10_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
+    ims['goessgps10_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha)[0]
+    ims['goessgps10_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goessgps10_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goessgps10_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goessgps10_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
@@ -571,7 +571,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
 
     ax = axs['goessgps100']
     # ax.set_title('GOES solar & galactic protons (>10MeV)')
-    ax.text(0.005, 0.96, 'GOES solar & galactic protons (>10MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    ax.text(0.005, 0.96, 'GOES solar & galactic protons (>100 MeV)', ha='left', va='top', transform=ax.transAxes, fontsize=12)
     ax.set_ylabel('part./(cm^2 s sr)')
     ax.yaxis.set_label_position("right")
     ax.plot(goessgps100_ground_truth_dates, goessgps100_ground_truth_values, color=colors['goessgps100'], alpha=0.75, label='Ground truth')
@@ -588,8 +588,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps100_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
     # ims['goessgps100_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goessgps100'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
-    ims['goessgps100_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
-    ims['goessgps100_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
+    ims['goessgps100_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha)[0]
+    ims['goessgps100_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goessgps100_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goessgps100_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goessgps100_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
@@ -622,8 +622,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goesxrs_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
     ims['goesxrs_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goesxrs'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
-    ims['goesxrs_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
-    ims['goesxrs_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
+    ims['goesxrs_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha)[0]
+    ims['goesxrs_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goesxrs_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['goesxrs_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goesxrs_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
@@ -635,7 +635,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ax.legend(loc='upper right')
     ax.set_ylim(ylims['goesxrs'])
 
-    title = plt.suptitle(title_prefix + ' ' + str(prediction_start))
+    title = plt.suptitle(title_prefix + ' ' + str(prediction_start), y=0.995)
 
     # num_frames = int(((full_end - prediction_start).total_seconds() / 60) / args.delta_minutes) + 1
     num_frames = len(full_dates) - model.context_window
@@ -772,7 +772,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
             pbar.update(1)
 
         # plt.tight_layout()
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=[0, 0, 1, 1.005])
         anim = animation.FuncAnimation(fig, run, interval=300, frames=num_frames)
         
         file_name = os.path.join(args.target_dir, file_prefix)
