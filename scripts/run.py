@@ -563,8 +563,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps10_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goessgps10_prediction_std_secondary_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     for i in range(args.num_samples):
-        label = 'Prediction (samples)' if i == 0 else None
-        ims['goessgps10_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha, label=label)
+        ims['goessgps10_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha)
         ims['goessgps10_prediction_{}_secondary'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_alpha)
     ax.legend(loc='upper right')
     ax.set_ylim(ylims['goessgps10'])
@@ -595,8 +594,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goessgps100_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goessgps100_prediction_std_secondary_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     for i in range(args.num_samples):
-        label = 'Prediction (samples)' if i == 0 else None
-        ims['goessgps100_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha, label=label)
+        ims['goessgps100_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha)
         ims['goessgps100_prediction_{}_secondary'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_alpha)
     ax.legend(loc='upper right')
     ax.set_ylim(ylims['goessgps100'])
@@ -629,8 +627,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ims['goesxrs_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     ims['goesxrs_prediction_std_secondary_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
     for i in range(args.num_samples):
-        label = 'Prediction (samples)' if i == 0 else None
-        ims['goesxrs_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha, label=label)
+        ims['goesxrs_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha)
         ims['goesxrs_prediction_{}_secondary'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_alpha)
     ax.legend(loc='upper right')
     ax.set_ylim(ylims['goesxrs'])
