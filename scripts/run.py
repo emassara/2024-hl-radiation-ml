@@ -972,7 +972,8 @@ def main():
             print('\nNumber of parameters: {:,}\n'.format(num_params))
 
             for epoch in range(epoch_start, args.epochs):
-                print('\n*** Epoch: {:,}/{:,}'.format(epoch+1, args.epochs))
+                epoch_start = datetime.datetime.now()
+                print('\n*** Epoch {:,}/{:,} started {}'.format(epoch+1, args.epochs, epoch_start))
                 print('*** Training')
                 model.train()
                 with tqdm(total=len(train_loader)) as pbar:
@@ -1105,7 +1106,6 @@ def main():
                     print('\nEpoch: {:,}/{:,} | Iter: {:,}/{:,} | Loss: {:.4f} | Valid loss: {:.4f}'.format(epoch+1, args.epochs, i+1, len(train_loader), float(loss), valid_loss))
                     valid_losses.append((iteration, valid_loss))
                 
-
                 # Save model
                 model_file = '{}/epoch-{:03d}-model.pth'.format(args.target_dir, epoch+1)
                 save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file)
@@ -1140,6 +1140,10 @@ def main():
                         title = 'Event: {} (>10 MeV max: {} pfu)'.format(event_id, max_pfu)
                         plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
                         run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
+
+                epoch_end = datetime.datetime.now()
+                print('\n*** Epoch {:,}/{:,} ended {}, duration {}'.format(epoch+1, args.epochs, epoch_end, epoch_end - epoch_start))
+        
 
         if args.mode == 'test':
             print('\n*** Testing mode\n')
