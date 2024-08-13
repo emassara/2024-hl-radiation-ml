@@ -966,6 +966,9 @@ def main():
                 valid_losses = []
                 model = model.to(device)
 
+
+            # We are using Monte Carlo dropout https://arxiv.org/abs/1506.02142 which requires dropout to be used at all times, including test/prediction/inference time
+            # Never use model.eval() at all, because it will disable dropout
             model.train()
 
             num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -975,7 +978,7 @@ def main():
                 epoch_start = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} started {}'.format(epoch+1, args.epochs, epoch_start))
                 print('*** Training')
-                model.train()
+                # model.train()
                 with tqdm(total=len(train_loader)) as pbar:
                     for i, batch in enumerate(train_loader):
                         
@@ -994,9 +997,11 @@ def main():
                             biosentinel = biosentinel.unsqueeze(-1)
                             data = torch.cat([goessgps10, goessgps100, goesxrs, biosentinel], dim=2)
 
+                            # context window
                             context_sdo = sdo[:, :model.context_window]
                             context_data = data[:, :model.context_window]
 
+                            # prediction window
                             input = data[:, model.context_window:-1]
                             target = data[:, model.context_window+1:]
 

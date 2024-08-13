@@ -24,8 +24,8 @@ def main():
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--rstn_radio_file', type=str, default='rstn-radio/rstn-radio.csv', help='RSTN Radio file')
     parser.add_argument('--num_samples', type=int, default=1000, help='Number of samples to use')
-    # parser.add_argument('--instruments', nargs='+', default=['SDOML-lite', 'GOESXRS', 'GOESSGPS10', 'GOESSGPS100', 'RSTNRadio', 'BPD', 'CRaTER-D1D2'], help='Instruments')
-    parser.add_argument('--instruments', nargs='+', default=['GOESSGPS100'], help='Instruments')
+    parser.add_argument('--instruments', nargs='+', default=['SDOML-lite', 'GOESXRS', 'GOESSGPS10', 'GOESSGPS100', 'RSTNRadio', 'BPD', 'CRaTER-D1D2'], help='Instruments')
+    # parser.add_argument('--instruments', nargs='+', default=['GOESSGPS100'], help='Instruments')
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
 
     args = parser.parse_args()

@@ -87,8 +87,18 @@ class RadRecurrent(nn.Module):
         x = torch.relu(x)
         x = self.fc1(x)
         return x
+    
+    # loss(t_p, o_p(i_p))
+    # oooooo    ooooooo
+    # ^^^^^^    ^^^^^^^
+    # ||||||    |||||||
+    # llllll--->lllllll
+    # ^^^^^^    ^^^^^^^
+    # ||||||    |||||||
+    # iiiiii    ööööööö
 
     def predict(self, context, prediction_window):
+        # context has shape (batch_size, context_window_length, self.data_dim)
         batch_size = context.shape[0]
         # context_length = context.shape[1]
         # print('Running model with context shape: {}'.format(context.shape))
@@ -149,6 +159,18 @@ class RadRecurrentWithSDO(nn.Module):
         x = torch.cat([sdo, data], dim=-1)
         _, self.hidden_context = self.lstm_context(x, self.hidden_context)
         self.hidden_predict = self.hidden_context
+
+    #                loss(t_p, o_p(i_c, i_p))
+    #                ttttttttttttt 
+    #                ooooooooooooo
+    #                ^^^^^^^^^^^^^ 
+    #                |||||||||||||
+    # lllllllllll--->lllllllllllll
+    # ^^^^^^^^^^^    ^^^^^^^^^^^^^
+    # |||||||||||    |||||||||||||
+    # iiiiiiiiiii    iiiiiiiiiiiii
+    # 
+    # context        prediction
 
     def forward(self, x):
         x, self.hidden_predict = self.lstm_predict(x, self.hidden_predict)
