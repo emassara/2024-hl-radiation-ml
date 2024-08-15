@@ -458,17 +458,17 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
 
     if isinstance(model, RadRecurrentWithSDO):
         fig, axs = plt.subplot_mosaic([['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'],
-                                    ['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel', 'biosentinel', 'biosentinel'],
+                                    ['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel', 'biosentinel', 'biosentinel']
                                     # ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
                                     # ['goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100', 'goessgps100'],
-                                    ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
-                                    ], figsize=(20, 12.5), height_ratios=[1, 1, 1])
+                                    # ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
+                                    ], figsize=(20, 10.7), height_ratios=[1, 1])
     elif isinstance(model, RadRecurrent):
-        fig, axs = plt.subplot_mosaic([['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel'],
+        fig, axs = plt.subplot_mosaic([['biosentinel', 'biosentinel', 'biosentinel', 'biosentinel']
                                     # ['goessgps10', 'goessgps10', 'goessgps10', 'goessgps10'],
                                     # ['goessgps100', 'goessgps100', 'goessgps100', 'goessgps100'],
-                                    ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
-                                    ], figsize=(20, 12.5), height_ratios=[1, 1])
+                                    # ['goesxrs', 'goesxrs', 'goesxrs', 'goesxrs']
+                                    ], figsize=(20, 10.7), height_ratios=[1, 1])
     else:
         raise ValueError('Unknown model type: {}'.format(model))
 
@@ -479,10 +479,10 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     # colors['goessgps100'] = 'darkorange'
     colors['goesxrs'] = 'purple'
     colors['prediction'] = 'red'
-    colors['prediction_mean'] = 'darkred'
+    colors['prediction_mean'] = 'black'
 
-    prediction_alpha = 0.08
-    prediction_mean_alpha = 0.55
+    prediction_alpha = 0.25
+    prediction_mean_alpha = 0.85
     prediction_secondary_alpha = prediction_alpha * 0.5
     prediction_secondary_mean_alpha =prediction_mean_alpha * 0.5
 
@@ -516,7 +516,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ax.xaxis.set_minor_locator(hours_locator)
     ax.grid(color='#f0f0f0', zorder=0, which='minor', axis='x')
     ax.grid(color='lightgray', zorder=0, which='major')
-    ax.set_xticklabels([])
+    # ax.set_xticklabels([])
     ax.set_yscale('log')    
     # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
     ims['biosentinel_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
@@ -599,38 +599,38 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     # ax.legend(loc='upper right')
     # ax.set_ylim(ylims['goessgps100'])
 
-    ax = axs['goesxrs']
-    # ax.set_title('GOES XRS')
-    ax.text(0.005, 0.96, 'GOES X-ray flux', ha='left', va='top', transform=ax.transAxes, fontsize=12)
-    ax.set_ylabel('W/m^2')
-    ax.yaxis.set_label_position("right")
-    ax.plot(goesxrs_ground_truth_dates, goesxrs_ground_truth_values, color=colors['goesxrs'], alpha=0.75, label='Ground truth')
-    # ax.tick_params(rotation=45)
-    ax.set_xticks(axs['biosentinel'].get_xticks())
-    ax.set_xlim(axs['biosentinel'].get_xlim())
-    ax.xaxis.set_minor_locator(hours_locator)
-    ax.grid(color='#f0f0f0', zorder=0, which='minor', axis='x')
-    ax.grid(color='lightgray', zorder=0, which='major')
-    ax.set_yscale('log')
-    myFmt = matplotlib.dates.DateFormatter('%Y-%m-%d %H:%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
-    ims['goesxrs_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
-    ims['goesxrs_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
-    ims['goesxrs_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
-    ims['goesxrs_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goesxrs'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
-    # prediction plots
-    ims['goesxrs_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha)[0]
-    ims['goesxrs_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
-    ims['goesxrs_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
-    ims['goesxrs_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
-    ims['goesxrs_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
-    ims['goesxrs_prediction_std_secondary_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
-    for i in range(args.num_samples):
-        ims['goesxrs_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha)
-        ims['goesxrs_prediction_{}_secondary'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_alpha)
-    ax.legend(loc='upper right')
-    ax.set_ylim(ylims['goesxrs'])
+    # ax = axs['goesxrs']
+    # # ax.set_title('GOES XRS')
+    # ax.text(0.005, 0.96, 'GOES X-ray flux', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    # ax.set_ylabel('W/m^2')
+    # ax.yaxis.set_label_position("right")
+    # ax.plot(goesxrs_ground_truth_dates, goesxrs_ground_truth_values, color=colors['goesxrs'], alpha=0.75, label='Ground truth')
+    # # ax.tick_params(rotation=45)
+    # ax.set_xticks(axs['biosentinel'].get_xticks())
+    # ax.set_xlim(axs['biosentinel'].get_xlim())
+    # ax.xaxis.set_minor_locator(hours_locator)
+    # ax.grid(color='#f0f0f0', zorder=0, which='minor', axis='x')
+    # ax.grid(color='lightgray', zorder=0, which='major')
+    # ax.set_yscale('log')
+    # myFmt = matplotlib.dates.DateFormatter('%Y-%m-%d %H:%M')
+    # ax.xaxis.set_major_formatter(myFmt)
+    # # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
+    # ims['goesxrs_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
+    # ims['goesxrs_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
+    # ims['goesxrs_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
+    # ims['goesxrs_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goesxrs'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
+    # # prediction plots
+    # ims['goesxrs_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha)[0]
+    # ims['goesxrs_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
+    # ims['goesxrs_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
+    # ims['goesxrs_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
+    # ims['goesxrs_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
+    # ims['goesxrs_prediction_std_secondary_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
+    # for i in range(args.num_samples):
+    #     ims['goesxrs_prediction_{}'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_alpha)
+    #     ims['goesxrs_prediction_{}_secondary'.format(i)], = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_alpha)
+    # ax.legend(loc='upper right')
+    # ax.set_ylim(ylims['goesxrs'])
 
     title = plt.suptitle(title_prefix + ' ' + str(prediction_start), y=0.995)
 
@@ -701,10 +701,10 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
             # ims['goessgps100_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
             # # ims['goessgps100_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goessgps100'][0]))
 
-            ims['goesxrs_context_start'].set_xdata([context_start_date, context_start_date])
-            ims['goesxrs_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
-            ims['goesxrs_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
-            ims['goesxrs_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goesxrs'][0]))
+            # ims['goesxrs_context_start'].set_xdata([context_start_date, context_start_date])
+            # ims['goesxrs_prediction_start'].set_xdata([prediction_start_date, prediction_start_date])
+            # ims['goesxrs_training_prediction_end'].set_xdata([training_prediction_end_date, training_prediction_end_date])
+            # ims['goesxrs_now_text'].set_position((prediction_start_date + datetime.timedelta(minutes=5), ylims['goesxrs'][0]))
 
             if isinstance(model, RadRecurrentWithSDO):
                 sdo_data = context_sdo[-1]
@@ -729,41 +729,41 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
             ims['biosentinel_prediction_mean'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0))
             # ims['goessgps10_prediction_mean'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0))
             # ims['goessgps100_prediction_mean'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0))
-            ims['goesxrs_prediction_mean'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0))
+            # ims['goesxrs_prediction_mean'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0))
 
-            ims['biosentinel_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) + np.std(biosentinel_predictions_primary, axis=0))
-            ims['biosentinel_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) - np.std(biosentinel_predictions_primary, axis=0))
+            # ims['biosentinel_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) + np.std(biosentinel_predictions_primary, axis=0))
+            # ims['biosentinel_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) - np.std(biosentinel_predictions_primary, axis=0))
             # ims['goessgps10_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0) - np.std(goessgps10_predictions_primary, axis=0))
             # ims['goessgps10_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0) + np.std(goessgps10_predictions_primary, axis=0))
             # ims['goessgps100_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0) - np.std(goessgps100_predictions_primary, axis=0))
             # ims['goessgps100_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0) + np.std(goessgps100_predictions_primary, axis=0))
-            ims['goesxrs_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) - np.std(goesxrs_predictions_primary, axis=0))
-            ims['goesxrs_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) + np.std(goesxrs_predictions_primary, axis=0))
+            # ims['goesxrs_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) - np.std(goesxrs_predictions_primary, axis=0))
+            # ims['goesxrs_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) + np.std(goesxrs_predictions_primary, axis=0))
 
             ims['biosentinel_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0))
             # ims['goessgps10_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0))
-            ims['goesxrs_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0))
+            # ims['goesxrs_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0))
 
-            ims['biosentinel_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) + np.std(biosentinel_predictions_secondary, axis=0))
-            ims['biosentinel_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) - np.std(biosentinel_predictions_secondary, axis=0))
+            # ims['biosentinel_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) + np.std(biosentinel_predictions_secondary, axis=0))
+            # ims['biosentinel_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) - np.std(biosentinel_predictions_secondary, axis=0))
             # ims['goessgps10_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) - np.std(goessgps10_predictions_secondary, axis=0))
             # ims['goessgps10_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) + np.std(goessgps10_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) - np.std(goessgps100_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) + np.std(goessgps100_predictions_secondary, axis=0))
-            ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
-            ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
+            # ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
+            # ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
 
             for i in range(args.num_samples):
                 ims['biosentinel_prediction_{}'.format(i)].set_data(prediction_dates_primary, biosentinel_predictions_primary[i])
                 # ims['goessgps10_prediction_{}'.format(i)].set_data(prediction_dates_primary, goessgps10_predictions_primary[i])
                 # ims['goessgps100_prediction_{}'.format(i)].set_data(prediction_dates_primary, goessgps100_predictions_primary[i])
-                ims['goesxrs_prediction_{}'.format(i)].set_data(prediction_dates_primary, goesxrs_predictions_primary[i])
+                # ims['goesxrs_prediction_{}'.format(i)].set_data(prediction_dates_primary, goesxrs_predictions_primary[i])
 
                 ims['biosentinel_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, biosentinel_predictions_secondary[i])
                 # ims['goessgps10_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goessgps10_predictions_secondary[i])
                 # ims['goessgps100_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goessgps100_predictions_secondary[i])
-                ims['goesxrs_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goesxrs_predictions_secondary[i])
+                # ims['goesxrs_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goesxrs_predictions_secondary[i])
 
             pbar.set_description('Frame {}'.format(prediction_start_date))
             pbar.update(1)
