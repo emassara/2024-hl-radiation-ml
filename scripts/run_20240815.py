@@ -525,7 +525,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     # ims['biosentinel_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['biosentinel'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
     ims['biosentinel_prediction_mean'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_mean_alpha, label='Prediction (mean)')[0]
-    ims['biosentinel_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (std dev)')[0]
+    ims['biosentinel_prediction_std_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['biosentinel_prediction_std_lower'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_mean_alpha)[0]
     ims['biosentinel_prediction_mean_secondary'] = ax.plot([], [], color=colors['prediction_mean'], alpha=prediction_secondary_mean_alpha)[0]
     ims['biosentinel_prediction_std_secondary_upper'] = ax.plot([], [], color=colors['prediction'], alpha=prediction_secondary_mean_alpha)[0]
