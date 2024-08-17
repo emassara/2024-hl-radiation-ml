@@ -518,6 +518,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     ax.grid(color='lightgray', zorder=0, which='major')
     # ax.set_xticklabels([])
     ax.set_yscale('log')    
+    myFmt = matplotlib.dates.DateFormatter('%Y-%m-%d %H:%M')
+    ax.xaxis.set_major_formatter(myFmt)    
     # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
     ims['biosentinel_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
     ims['biosentinel_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
