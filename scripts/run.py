@@ -797,10 +797,10 @@ def main():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')
-    parser.add_argument('--sdo_dir', type=str, default='sdoml-lite-biosentinel', help='SDOML-lite-biosentinel directory')
+    parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite-biosentinel directory')#changed
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
     parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context')
-    parser.add_argument('--radlab_file', type=str, default='radlab/RadLab-20240625-duck.db', help='RadLab file')
+    parser.add_argument('--radlab_file', type=str, default='radlab/RadLab-20240625-duck-corrected.db', help='RadLab file')#changed
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--context_window', type=int, default=40, help='Context window')
