@@ -800,7 +800,7 @@ def main():
     parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite-biosentinel directory')#changed
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
     parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context')
-    parser.add_argument('--radlab_file', type=str, default='radlab/RadLab-20240625-duck-corrected.db', help='RadLab file')#changed
+    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')#changed
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--context_window', type=int, default=40, help='Context window')
@@ -1037,6 +1037,17 @@ def main():
                         loss = torch.nn.functional.mse_loss(output, target)
                         loss.backward()
                         optimizer.step()
+
+                        ##### Intermediate outputs #####
+                        train_loss_file = '{}/epoch-{:03d}-train_loss.txt'.format(args.target_dir, epoch+1)
+                        f = open(train_loss_file, 'a')
+                        f.write('%d %.5e\n'%(iteration, float(loss)))
+                        f.close()
+                        # Save model
+                        if iteration%50==0:
+                            model_file_intermediate = '{}/intermediate_epoch-{:03d}-model.pth'.format(args.target_dir, epoch+1)
+                            save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file_intermediate)
+                        ############
 
                         train_losses.append((iteration, float(loss)))
 
