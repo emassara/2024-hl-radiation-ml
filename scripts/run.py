@@ -821,7 +821,7 @@ def save_test_numpy(model, date_start, date_end, args):
             print('No data available for full sequence to generate predictions')
             return
         full_sequence = dataset_sequences[0]
-        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[5]]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[3]]
     elif isinstance(model, RadRecurrent):
         full_start = max(dataset_goes_xrs.date_start, dataset_biosentinel.date_start)
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
@@ -830,7 +830,7 @@ def save_test_numpy(model, date_start, date_end, args):
             print('No data available for full sequence to generate predictions')
             return
         full_sequence = dataset_sequences[0]
-        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[4]]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[2]]
     else:
         raise ValueError('Unknown model type: {}'.format(model))
 
@@ -889,30 +889,22 @@ def save_test_numpy(model, date_start, date_end, args):
             if isinstance(model, RadRecurrentWithSDO):
                 context_sdo = full_sequence[0][context_start:context_end+1].to(args.device)
                 context_sdo_batch = context_sdo.unsqueeze(0)
-                context_goessgps10 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_goessgps100 = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_goesxrs = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[4][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_biosentinel = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_data = torch.cat([context_goesxrs, context_biosentinel], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
                 prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
             elif isinstance(model, RadRecurrent):
-                context_goessgps10 = full_sequence[0][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_goessgps100 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_goesxrs = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_biosentinel = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context = torch.cat([context_goesxrs, context_biosentinel], dim=1)
                 context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
                 prediction_batch = model.predict(context_batch, prediction_window).detach()
             else:
                 raise ValueError('Unknown model type: {}'.format(model))
 
-            goessgps10_predictions = prediction_batch[:, :, 0]
-            goessgps100_predictions = prediction_batch[:, :, 1]
-            goesxrs_predictions = prediction_batch[:, :, 2]
-            biosentinel_predictions = prediction_batch[:, :, 3]
-            goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
-            goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
+            goesxrs_predictions = prediction_batch[:, :, 0]
+            biosentinel_predictions = prediction_batch[:, :, 1]
             goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
             biosentinel_predictions = dataset_biosentinel.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
