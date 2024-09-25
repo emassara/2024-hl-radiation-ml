@@ -21,7 +21,7 @@ import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO
-from events import EventCatalog
+from events_months import EventCatalog
 
 matplotlib.use('Agg')
 
@@ -777,7 +777,8 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         print('Saving video to {}'.format(file_name_mp4))
         writer_mp4 = animation.FFMpegWriter(fps=15)
         anim.save(file_name_mp4, writer=writer_mp4)
-    
+
+
 def save_loss_plot(train_losses, valid_losses, plot_file):
     print('Saving plot to {}'.format(plot_file))
     plt.figure(figsize=(12, 6))
@@ -792,15 +793,159 @@ def save_loss_plot(train_losses, valid_losses, plot_file):
     plt.savefig(plot_file)    
 
 
+def save_test_numpy(model, date_start, date_end, args):
+    data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
+    # data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
+    data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
+    data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
+
+    # Different compared to run_test_video: 
+    # full_start = initial test time = beginning of first context window
+    # full_end goes beyond test interval
+    full_start = date_start # - datetime.timedelta(minutes=(model.context_window - 1) * args.delta_minutes)
+    prediction_window = model.prediction_window * args.multiples_prediction_window
+    full_end = date_end + datetime.timedelta(minutes=prediction_window * args.delta_minutes)
+
+    # dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=full_end, column='>10MeV')
+    # dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=full_end, column='>100MeV')
+    dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=full_end)
+    dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=full_start, date_end=full_end)
+    if isinstance(model, RadRecurrentWithSDO):
+        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=full_end, random_data=args.sdo_random_data)
+        full_start = max(dataset_sdo.date_start, 
+                        dataset_goes_xrs.date_start, dataset_biosentinel.date_start) # need to reassign because data availability may change the start date
+        time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
+        dataset_sequences = Sequences([dataset_sdo, 
+                                    dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        if len(dataset_sequences) == 0:
+            print('No data available for full sequence to generate predictions')
+            return
+        full_sequence = dataset_sequences[0]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[5]]
+    elif isinstance(model, RadRecurrent):
+        full_start = max(dataset_goes_xrs.date_start, dataset_biosentinel.date_start)
+        time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
+        dataset_sequences = Sequences([dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        if len(dataset_sequences) == 0:
+            print('No data available for full sequence to generate predictions')
+            return
+        full_sequence = dataset_sequences[0]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[4]]
+    else:
+        raise ValueError('Unknown model type: {}'.format(model))
+
+    if full_start != full_dates[0]:
+        print('full start adjusted from {} to {} (due to data availability)'.format(full_start, full_dates[0]))
+    full_start = full_dates[0]
+
+    
+    # get the ground truth within the test event
+    # goessgps10_ground_truth_dates, goessgps10_ground_truth_values = dataset_goes_sgps10.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    # goessgps100_ground_truth_dates, goessgps100_ground_truth_values = dataset_goes_sgps100.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    goesxrs_ground_truth_dates, goesxrs_ground_truth_values = dataset_goes_xrs.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_biosentinel.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    # goessgps10_ground_truth_values = dataset_goes_sgps10.unnormalize_data(goessgps10_ground_truth_values)
+    # goessgps100_ground_truth_values = dataset_goes_sgps100.unnormalize_data(goessgps100_ground_truth_values)
+    goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
+    biosentinel_ground_truth_values = dataset_biosentinel.unnormalize_data(biosentinel_ground_truth_values)
+
+    # number of datapoints (now-times)
+    num_frames = len(full_dates) - model.context_window - prediction_window
+
+    current_now_day = full_dates[model.context_window - 1]
+    biosentinel_p = []
+    goesxrs_p = []
+    dates_p = []
+    with tqdm(total=num_frames) as pbar:
+        for i in range(num_frames):
+            context_start = i # sliding context
+            context_end = i + model.context_window - 1
+            prediction_start = context_end
+
+            context_start_date = full_dates[context_start]
+            prediction_start_date = full_dates[prediction_start]
+
+            if not prediction_start_date.day == current_now_day.day:
+                file_biosentinel = os.path.join(args.target_dir,'test-biosentinel-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                print('Saving into...',file_biosentinel)
+                biosentinel_p = np.array(biosentinel_p)
+                np.save(file_biosentinel,biosentinel_p)
+
+                file_goesxrs = os.path.join(args.target_dir,'test-goesxrs-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                print('Saving into...',file_goesxrs)
+                goesxrs_p = np.array(goesxrs_p)
+                np.save(file_goesxrs,goesxrs_p)
+                
+                file_dates = os.path.join(args.target_dir,'test-dates-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                print('Saving into...',file_dates)
+                dates_p = np.array(dates_p)
+                np.save(file_dates,dates_p)
+
+                dates_p = []
+                biosentinel_p = []
+                goesxrs_p = []
+                current_now_day = full_dates[prediction_start]
+
+            if isinstance(model, RadRecurrentWithSDO):
+                context_sdo = full_sequence[0][context_start:context_end+1].to(args.device)
+                context_sdo_batch = context_sdo.unsqueeze(0)
+                context_goessgps10 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_goessgps100 = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_goesxrs = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_biosentinel = full_sequence[4][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_data_batch = context_data.unsqueeze(0)
+                prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
+            elif isinstance(model, RadRecurrent):
+                context_goessgps10 = full_sequence[0][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_goessgps100 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_goesxrs = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_biosentinel = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
+                prediction_batch = model.predict(context_batch, prediction_window).detach()
+            else:
+                raise ValueError('Unknown model type: {}'.format(model))
+
+            goessgps10_predictions = prediction_batch[:, :, 0]
+            goessgps100_predictions = prediction_batch[:, :, 1]
+            goesxrs_predictions = prediction_batch[:, :, 2]
+            biosentinel_predictions = prediction_batch[:, :, 3]
+            goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
+            goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
+            goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
+            biosentinel_predictions = dataset_biosentinel.unnormalize_data(biosentinel_predictions).cpu().numpy()
+            prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
+
+            """#  divide predictions in within prediction window and beyond prediction window
+            prediction_dates_primary = prediction_dates[:model.prediction_window+1]
+            prediction_dates_secondary = prediction_dates[model.prediction_window+1:]
+            biosentinel_predictions_primary = biosentinel_predictions[:, :model.prediction_window+1]
+            biosentinel_predictions_secondary = biosentinel_predictions[:, model.prediction_window+1:]
+            goessgps10_predictions_primary = goessgps10_predictions[:, :model.prediction_window+1]
+            goessgps10_predictions_secondary = goessgps10_predictions[:, model.prediction_window+1:]
+            goessgps100_predictions_primary = goessgps100_predictions[:, :model.prediction_window+1]
+            goessgps100_predictions_secondary = goessgps100_predictions[:, model.prediction_window+1:]
+            goesxrs_predictions_primary = goesxrs_predictions[:, :model.prediction_window+1]
+            goesxrs_predictions_secondary = goesxrs_predictions[:, model.prediction_window+1:]"""
+
+            pbar.set_description('Frame {}'.format(prediction_start_date))
+            pbar.update(1)
+    
+            biosentinel_p.append(biosentinel_predictions)
+            goesxrs_p.append(goesxrs_predictions)
+            dates_p.append(np.reshape(np.tile(prediction_dates,args.num_samples),(args.num_samples,len(prediction_dates))))
+            
+    
 def main():
     description = 'FDL-X 2024, Radiation Team, preliminary machine learning experiments'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')
-    parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')
-    parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite-biosentinel directory')#changed
+    parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')#/home/emassara/2024-hl-radiation-ml/results
+    parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
+    parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
     parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context')
-    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')#changed
+    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--context_window', type=int, default=40, help='Context window')
@@ -820,12 +965,13 @@ def main():
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date')
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')
-    parser.add_argument('--test_event_id', nargs='+', default=['biosentinel01', 'biosentinel07', 'biosentinel19'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
     parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
     # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
 
     parser.add_argument('--model_file', type=str, help='Model file')
+    parser.add_argument('--multiples_prediction_window', type=int, default=1, help='multiples_prediction_window')
 
     args = parser.parse_args()
 
@@ -848,7 +994,7 @@ def main():
 
 
         data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
-        data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
+        #data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
         data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
         data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
 
@@ -861,8 +1007,8 @@ def main():
             print('Processing excluded dates')
             if args.model_type == 'RadRecurrentWithSDO':
                 datasets_sdo_valid = []
-            datasets_goes_sgps10_valid = []
-            datasets_goes_sgps100_valid = []
+            #datasets_goes_sgps10_valid = []
+            #datasets_goes_sgps100_valid = []
             datasets_goes_xrs_valid = []
             datasets_biosentinel_valid = []
 
@@ -872,41 +1018,45 @@ def main():
                     print('Excluding event: {}'.format(event_id))
                     if event_id not in EventCatalog:
                         raise ValueError('Event ID not found in events: {}'.format(event_id))
-                    exclusion_start, exclusion_end, _ = EventCatalog[event_id]
+                    exclusion_start, exclusion_end = EventCatalog[event_id]
                     exclusion_start = datetime.datetime.fromisoformat(exclusion_start)
                     exclusion_end = datetime.datetime.fromisoformat(exclusion_end)
                     date_exclusions.append((exclusion_start, exclusion_end))
 
                     if args.model_type == 'RadRecurrentWithSDO':
                         datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
-                    datasets_goes_sgps10_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>10MeV'))
-                    datasets_goes_sgps100_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>100MeV'))
+                    #datasets_goes_sgps10_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>10MeV'))
+                    #datasets_goes_sgps100_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>100MeV'))
                     datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end))
                     datasets_biosentinel_valid.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end))
 
             if args.model_type == 'RadRecurrentWithSDO':
                 dataset_sdo_valid = UnionDataset(datasets_sdo_valid)
-            dataset_goes_sgps10_valid = UnionDataset(datasets_goes_sgps10_valid)
-            dataset_goes_sgps100_valid = UnionDataset(datasets_goes_sgps100_valid)
+            #dataset_goes_sgps10_valid = UnionDataset(datasets_goes_sgps10_valid)
+            #dataset_goes_sgps100_valid = UnionDataset(datasets_goes_sgps100_valid)
             dataset_goes_xrs_valid = UnionDataset(datasets_goes_xrs_valid)
             dataset_biosentinel_valid = UnionDataset(datasets_biosentinel_valid)
 
             if args.model_type == 'RadRecurrentWithSDO':
-                dataset_sequences_valid = Sequences([dataset_sdo_valid, dataset_goes_sgps10_valid, dataset_goes_sgps100_valid, dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_valid = Sequences([dataset_sdo_valid, #dataset_goes_sgps10_valid, dataset_goes_sgps100_valid, 
+                                                    dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
             else:
-                dataset_sequences_valid = Sequences([dataset_goes_sgps10_valid, dataset_goes_sgps100_valid, dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_valid = Sequences([#dataset_goes_sgps10_valid, dataset_goes_sgps100_valid, 
+                                                    dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
 
             # For training and validation
             if args.model_type == 'RadRecurrentWithSDO':
                 dataset_sdo = SDOMLlite(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
-            dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, column='>10MeV')
-            dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, column='>100MeV')
+            #dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, column='>10MeV')
+            #dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, column='>100MeV')
             dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions)
             dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions)
             if args.model_type == 'RadRecurrentWithSDO':
-                dataset_sequences_train = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_train = Sequences([dataset_sdo, #dataset_goes_sgps10, dataset_goes_sgps100, 
+                                                    dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
             else:
-                dataset_sequences_train = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_train = Sequences([#dataset_goes_sgps10, dataset_goes_sgps100,
+                                                     dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
 
             # Split sequences into train and validation
             # valid_size = int(args.valid_proportion * len(dataset_sequences))
@@ -939,7 +1089,7 @@ def main():
             else:
                 print('Creating new model')
                 if args.model_type == 'RadRecurrent':
-                    model_data_dim = 4
+                    model_data_dim = 2
                     model_lstm_dim = 1024
                     model_lstm_depth = args.lstm_depth
                     model_dropout = 0.2
@@ -947,7 +1097,7 @@ def main():
                     model_prediction_window = args.prediction_window
                     model = RadRecurrent(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, context_window=model_context_window, prediction_window=model_prediction_window)
                 elif args.model_type == 'RadRecurrentWithSDO':
-                    model_data_dim = 4
+                    model_data_dim = 2
                     model_lstm_dim = 1024
                     model_lstm_depth = args.lstm_depth
                     model_dropout = 0.2
@@ -983,19 +1133,15 @@ def main():
                     for i, batch in enumerate(train_loader):
                         
                         if isinstance(model, RadRecurrentWithSDO):
-                            (sdo, goessgps10, goessgps100, goesxrs, biosentinel, _) = batch
-                            batch_size = goessgps10.shape[0]
+                            (sdo, goesxrs, biosentinel, _) = batch
+                            batch_size = goesxrs.shape[0]
 
                             sdo = sdo.to(device)
-                            goessgps10 = goessgps10.to(device)
-                            goessgps100 = goessgps100.to(device)
                             goesxrs = goesxrs.to(device)
                             biosentinel = biosentinel.to(device)
-                            goessgps10 = goessgps10.unsqueeze(-1)
-                            goessgps100 = goessgps100.unsqueeze(-1)
                             goesxrs = goesxrs.unsqueeze(-1)
                             biosentinel = biosentinel.unsqueeze(-1)
-                            data = torch.cat([goessgps10, goessgps100, goesxrs, biosentinel], dim=2)
+                            data = torch.cat([goesxrs, biosentinel], dim=2)
 
                             # context window
                             context_sdo = sdo[:, :model.context_window]
@@ -1012,18 +1158,14 @@ def main():
 
 
                         elif isinstance(model, RadRecurrent):
-                            (goessgps10, goessgps100, goesxrs, biosentinel, _) = batch
+                            (goesxrs, biosentinel, _) = batch
                             batch_size = goesxrs.shape[0]
 
-                            goessgps10 = goessgps10.to(device)
-                            goessgps100 = goessgps100.to(device)
                             goesxrs = goesxrs.to(device)
                             biosentinel = biosentinel.to(device)
-                            goessgps10 = goessgps10.unsqueeze(-1)
-                            goessgps100 = goessgps100.unsqueeze(-1)
                             goesxrs = goesxrs.unsqueeze(-1)
                             biosentinel = biosentinel.unsqueeze(-1)
-                            data = torch.cat([goessgps10, goessgps100, goesxrs, biosentinel], dim=2)
+                            data = torch.cat([goesxrs, biosentinel], dim=2)
                             
                             input = data[:, :-1]
                             target = data[:, 1:]
@@ -1065,19 +1207,15 @@ def main():
                         for batch in valid_loader:
                             
                             if isinstance(model, RadRecurrentWithSDO):
-                                (sdo, goessgps10, goessgps100, goesxrs, biosentinel, _) = batch
-                                batch_size = goessgps10.shape[0]
+                                (sdo, goesxrs, biosentinel, _) = batch
+                                batch_size = goesxrs.shape[0]
 
                                 sdo = sdo.to(device)
-                                goessgps10 = goessgps10.to(device)
-                                goessgps100 = goessgps100.to(device)
                                 goesxrs = goesxrs.to(device)
                                 biosentinel = biosentinel.to(device)
-                                goessgps10 = goessgps10.unsqueeze(-1)
-                                goessgps100 = goessgps100.unsqueeze(-1)
                                 goesxrs = goesxrs.unsqueeze(-1)
                                 biosentinel = biosentinel.unsqueeze(-1)
-                                data = torch.cat([goessgps10, goessgps100, goesxrs, biosentinel], dim=2)
+                                data = torch.cat([goesxrs, biosentinel], dim=2)
 
                                 context_sdo = sdo[:, :model.context_window]
                                 context_data = data[:, :model.context_window]
@@ -1089,18 +1227,14 @@ def main():
                                 model.forward_context(context_sdo, context_data)
                                 output = model.forward(input)
                             elif isinstance(model, RadRecurrent):
-                                (goessgps10, goessgps100, goesxrs, biosentinel, _) = batch
-                                batch_size = goessgps10.shape[0]
+                                (goesxrs, biosentinel, _) = batch
+                                batch_size = goesxrs.shape[0]
 
-                                goessgps10 = goessgps10.to(device)
-                                goessgps100 = goessgps100.to(device)
                                 goesxrs = goesxrs.to(device)
                                 biosentinel = biosentinel.to(device)
-                                goessgps10 = goessgps10.unsqueeze(-1)
-                                goessgps100 = goessgps100.unsqueeze(-1)
                                 goesxrs = goesxrs.unsqueeze(-1)
                                 biosentinel = biosentinel.unsqueeze(-1)
-                                data = torch.cat([goessgps10, goessgps100, goesxrs, biosentinel], dim=2)
+                                data = torch.cat([goesxrs, biosentinel], dim=2)
 
                                 input = data[:, :-1]
                                 target = data[:, 1:]
@@ -1131,31 +1265,31 @@ def main():
                 plot_file = '{}/epoch-{:03d}-loss.pdf'.format(args.target_dir, epoch+1)
                 save_loss_plot(train_losses, valid_losses, plot_file)
 
-                if args.test_event_id is not None:
-                    for event_id in args.test_event_id:
-                        if event_id not in EventCatalog:
-                            raise ValueError('Event ID not found in events: {}'.format(event_id))
-                        date_start, date_end, max_pfu = EventCatalog[event_id]
-                        print('\nEvent ID: {}'.format(event_id))
-                        date_start = datetime.datetime.fromisoformat(date_start)
-                        date_end = datetime.datetime.fromisoformat(date_end)
-                        file_prefix = 'epoch-{:03d}-test-event-{}-{}pfu-{}-{}'.format(epoch+1, event_id, max_pfu, date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
-                        title = 'Event: {} (>10 MeV max: {} pfu)'.format(event_id, max_pfu)
-                        plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
-                        run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
+                # if args.test_event_id is not None:
+                #     for event_id in args.test_event_id:
+                #         if event_id not in EventCatalog:
+                #             raise ValueError('Event ID not found in events: {}'.format(event_id))
+                #         date_start, date_end = EventCatalog[event_id]
+                #         print('\nEvent ID: {}'.format(event_id))
+                #         date_start = datetime.datetime.fromisoformat(date_start)
+                #         date_end = datetime.datetime.fromisoformat(date_end)
+                #         file_prefix = 'epoch-{:03d}-test-event-{}-{}-{}'.format(epoch+1, event_id, date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+                #         title = 'Event: {} '.format(event_id)
+                #         plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
+                #         run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
 
-                if args.test_seen_event_id is not None:
-                    for event_id in args.test_seen_event_id:
-                        if event_id not in EventCatalog:
-                            raise ValueError('Event ID not found in events: {}'.format(event_id))
-                        date_start, date_end, max_pfu = EventCatalog[event_id]
-                        print('\nEvent ID: {}'.format(event_id))
-                        date_start = datetime.datetime.fromisoformat(date_start)
-                        date_end = datetime.datetime.fromisoformat(date_end)
-                        file_prefix = 'epoch-{:03d}-test-seen-event-{}-{}pfu-{}-{}'.format(epoch+1, event_id, max_pfu, date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
-                        title = 'Event: {} (>10 MeV max: {} pfu)'.format(event_id, max_pfu)
-                        plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
-                        run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
+                # if args.test_seen_event_id is not None:
+                #     for event_id in args.test_seen_event_id:
+                #         if event_id not in EventCatalog:
+                #             raise ValueError('Event ID not found in events: {}'.format(event_id))
+                #         date_start, date_end = EventCatalog[event_id]
+                #         print('\nEvent ID: {}'.format(event_id))
+                #         date_start = datetime.datetime.fromisoformat(date_start)
+                #         date_end = datetime.datetime.fromisoformat(date_end)
+                #         file_prefix = 'epoch-{:03d}-test-seen-event-{}-{}-{}'.format(epoch+1, event_id, date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+                #         title = 'Event: {} '.format(event_id)
+                #         plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
+                #         run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
 
                 epoch_end = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} ended {}, duration {}'.format(epoch+1, args.epochs, epoch_end, epoch_end - epoch_start))
@@ -1175,13 +1309,13 @@ def main():
                 for event_id in args.test_event_id:
                     if event_id not in EventCatalog:
                         raise ValueError('Event ID not found in events: {}'.format(event_id))
-                    date_start, date_end, max_pfu = EventCatalog[event_id]
+                    date_start, date_end = EventCatalog[event_id]
                     print('\nEvent ID: {}'.format(event_id))
 
                     date_start = datetime.datetime.fromisoformat(date_start)
                     date_end = datetime.datetime.fromisoformat(date_end)
-                    file_prefix = 'test-event-{}-{}pfu-{}-{}'.format(event_id, max_pfu, date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
-                    title = 'Event: {} (>10 MeV max: {} pfu)'.format(event_id, max_pfu)
+                    file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+                    title = 'Event: {} '.format(event_id)
                     tests_to_run.append((date_start, date_end, file_prefix, title))
 
             else:
@@ -1195,8 +1329,9 @@ def main():
 
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
-                run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
+                save_test_numpy(model, date_start, date_end, args)
+                #plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
+                #run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
 
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))

@@ -691,7 +691,7 @@ class Sequences(Dataset):
             sequence_available = True
             for i in range(self.sequence_length):
                 date = sequence_start + datetime.timedelta(minutes=i*self.delta_minutes)
-                if i == 0:
+                if i == 0: #nowtime must have all measurements available
                     for dataset in self.datasets:
                         if date not in dataset.dates_set:
                             sequence_available = False
