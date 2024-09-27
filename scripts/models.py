@@ -200,5 +200,50 @@ class RadRecurrentWithSDO(nn.Module):
         prediction = torch.cat(prediction, dim=1)
         return prediction
 
+class RadRecurrentWithSDOCore(nn.Module):
+    """
+    RadRecurrentWithSDO variant for SDOCore embeddings dataset instead of SDOML-lite video dataset. Does not require the SDOEmbedding model.
+    """
+    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_dim=21504, context_window=10, prediction_window=10):
+        super().__init__()
+        self.data_dim = data_dim
+        self.lstm_dim = lstm_dim
+        self.lstm_depth = lstm_depth
+        self.dropout = dropout
+        self.sdo_dim = sdo_dim
+        self.context_window = context_window
+        self.prediction_window = prediction_window
+
+        self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
+        self.lstm_predict = nn.LSTM(input_size=data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
+
+        self.fc1 = nn.Linear(lstm_dim, data_dim)
+        self.dropout1 = nn.Dropout(dropout)
+        self.hidden_context = None
+        self.hidden_predict = None
+    
+    def init(self, batch_size):
+        h = torch.zeros(self.lstm_depth, batch_size, self.lstm_dim)
+        c = torch.zeros(self.lstm_depth, batch_size, self.lstm_dim)
+        device = next(self.parameters()).device
+        h = h.to(device)
+        c = c.to(device)
+        self.hidden_context = (h, c)
+    
+    def forward_context(self, sdo, data):
+        # sdo has shape (batch_size, seq_len, sdo_dim)
+        # data has shape (batch_size, seq_len, data_dim)
+        batch_size = sdo.shape[0]
+        seq_len = sdo.shape[1]
+        x = torch.cat([sdo, data], dim=-1)
+        _, self.hidden_context = self.lstm_context(x, self.hidden_context)
+        self.hidden_predict = self.hidden_context
+    
+    def forward(self, x):
+        x, self.hidden_predict = self.lstm_predict(x, self.hidden_predict)
+        x = self.dropout1(x)
+        x = torch.relu(x)
+        x = self.fc1(x)
+        return x
 
 # class RadTransformer
