@@ -204,39 +204,6 @@ class SDOMLlite(Dataset):
             data = data ** 2.
         return data
 
-class SDOCore(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=False, rewind_minutes=15, date_exclusions=None):
-        print('\nSDO Core')
-        print('File                 : {}'.format(file_name))
-        delta_minutes = 12
-
-        ## Read the h5 file
-        f = h5py.File(self.data_filepath, 'r')
-        # for key in self.f.keys(): print(key, f[key].shape)
-
-        ## Combine the year, month, day, hour, minute lists into datetimes list
-        years = f['year'][:]
-        months = f['month'][:]
-        days = f['day'][:]
-        hours = f['hour'][:]
-        minutes = f['minute'][:]
-        
-        latent = f['latent'][:]
-        ## Convert from float64 to float16 to save memory
-        data = latent.astype(np.float16)
-        del latent
-        
-        self.datetimes = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
-        print('Rows                 : {:,}'.format(len(datatimes)))
-
-        super().__init__('SDO Core', data, 'latent', delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
-    
-    def normalize_data(self, data):
-        raise NotImplementedError('normalize_data not implemented')
-    
-    def unnormalize_data(self, data):
-        raise NotImplementedError('unnormalize_data not implemented')
-        
 
 class PandasDataset(Dataset):
     def __init__(self, name, data_frame, column, delta_minutes, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
@@ -434,6 +401,39 @@ class UnionDataset(Dataset):
                 return value, date
         return None, None
 
+class SDOCore(PandasDataset):
+    def __init__(self, file_name, date_start=None, date_end=None, normalize=False, rewind_minutes=15, date_exclusions=None):
+        print('\nSDO Core')
+        print('File                 : {}'.format(file_name))
+        delta_minutes = 12
+
+        ## Read the h5 file
+        f = h5py.File(self.data_filepath, 'r')
+        # for key in self.f.keys(): print(key, f[key].shape)
+
+        ## Combine the year, month, day, hour, minute lists into datetimes list
+        years = f['year'][:]
+        months = f['month'][:]
+        days = f['day'][:]
+        hours = f['hour'][:]
+        minutes = f['minute'][:]
+        
+        latent = f['latent'][:]
+        ## Convert from float64 to float16 to save memory
+        data = latent.astype(np.float16)
+        del latent
+        
+        self.datetimes = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
+        print('Rows                 : {:,}'.format(len(datatimes)))
+
+        super().__init__('SDO Core', data, 'latent', delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+    
+    def normalize_data(self, data):
+        raise NotImplementedError('normalize_data not implemented')
+    
+    def unnormalize_data(self, data):
+        raise NotImplementedError('unnormalize_data not implemented')
+        
 
 class GOESXRS(PandasDataset):
     def __init__(self, file_name, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
