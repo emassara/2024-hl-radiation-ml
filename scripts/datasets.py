@@ -568,6 +568,7 @@ class RSTNRadio(PandasDataset):
 class RadLab(PandasDataset):
     def __init__(self, file_name, instrument='BPD', date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
         self.instrument = instrument
+        
         name = 'RadLab ({})'.format(self.instrument)
         print('\n{}'.format(name))
         print('File                 : {}'.format(file_name))
