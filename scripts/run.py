@@ -940,10 +940,10 @@ def main():
     parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
-    parser.add_argument('--context_window', type=int, default=40, help='Context window')
-    parser.add_argument('--prediction_window', type=int, default=40, help='Prediction window')
+    parser.add_argument('--context_window', type=int, default=50, help='Context window')
+    parser.add_argument('--prediction_window', type=int, default=50, help='Prediction window')
     parser.add_argument('--num_samples', type=int, default=50, help='Number of samples for MC dropout inference')
-    parser.add_argument('--delta_minutes', type=int, default=15, help='Delta minutes')
+    parser.add_argument('--delta_minutes', type=int, default=15, help='Delta minutes') # maybe set it to the cadence of solar images (12 for SDOcore, 15 for SDOMLlite)
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers')
     parser.add_argument('--seed', type=int, default=0, help='Random number generator seed')
@@ -952,7 +952,7 @@ def main():
     parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay')
     parser.add_argument('--valid_proportion', type=float, default=0.05, help='Validation frequency in iterations')
     parser.add_argument('--device', type=str, default='cpu', help='Device')
-    parser.add_argument('--lstm_depth', type=int, default=5, help='LSTM depth')
+    parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date')
@@ -1017,10 +1017,10 @@ def main():
 
                     if args.model_type == 'RadRecurrentWithSDO':
                         datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
-                    #datasets_goes_sgps10_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>10MeV'))
-                    #datasets_goes_sgps100_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>100MeV'))
-                    datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end))
-                    datasets_biosentinel_valid.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end))
+                    #datasets_goes_sgps10_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>10MeV',rewind_minutes=args.delta_minutes))
+                    #datasets_goes_sgps100_valid.append(GOESSGPS(data_dir_goes_sgps, date_start=exclusion_start, date_end=exclusion_end, column='>100MeV',rewind_minutes=args.delta_minutes))
+                    datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
+                    datasets_biosentinel_valid.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
 
             if args.model_type == 'RadRecurrentWithSDO':
                 dataset_sdo_valid = UnionDataset(datasets_sdo_valid)
