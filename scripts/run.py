@@ -20,7 +20,7 @@ import glob
 import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
-from models import RadRecurrent, RadRecurrentWithSDO
+from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
 from events_months import EventCatalog
 
 matplotlib.use('Agg')
@@ -322,16 +322,16 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>10MeV')
     dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=context_start, date_end=date_end, column='>100MeV')
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=context_start, date_end=date_end)
-    dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=context_start, date_end=date_end)
+    dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=context_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
         dataset_sdo = SDOMLlite(data_dir_sdo, date_start=context_start, date_end=date_end, random_data=args.sdo_random_data)
-        dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
+        dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
         context_sequence = dataset_sequences[0]
         context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[5]]
     elif isinstance(model, RadRecurrent):
-        dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
+        dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
         context_sequence = dataset_sequences[0]
@@ -350,8 +350,8 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
         context_goessgps10 = context_sequence[0][:model.context_window].unsqueeze(1).to(args.device)
         context_goessgps100 = context_sequence[1][:model.context_window].unsqueeze(1).to(args.device)
         context_goesxrs = context_sequence[2][:model.context_window].unsqueeze(1).to(args.device)
-        context_biosentinel = context_sequence[3][:model.context_window].unsqueeze(1).to(args.device)
-        context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+        context_rad = context_sequence[3][:model.context_window].unsqueeze(1).to(args.device)
+        context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
         context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
         prediction_batch = model.predict(context_batch, prediction_window).detach()
     elif isinstance(model, RadRecurrentWithSDO):
@@ -360,8 +360,8 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
         context_goessgps10 = context_sequence[1][:model.context_window].unsqueeze(1).to(args.device)
         context_goessgps100 = context_sequence[2][:model.context_window].unsqueeze(1).to(args.device)
         context_goesxrs = context_sequence[3][:model.context_window].unsqueeze(1).to(args.device)
-        context_biosentinel = context_sequence[4][:model.context_window].unsqueeze(1).to(args.device)
-        context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+        context_rad = context_sequence[4][:model.context_window].unsqueeze(1).to(args.device)
+        context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
         context_data_batch = context_data.unsqueeze(0)
         prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
     else:
@@ -379,19 +379,19 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
     goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
     goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
-    biosentinel_predictions = dataset_biosentinel.unnormalize_data(biosentinel_predictions).cpu().numpy()
+    biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
 
     # predict end
 
     goessgps10_ground_truth_dates, goessgps10_ground_truth_values = dataset_goes_sgps10.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
     goessgps100_ground_truth_dates, goessgps100_ground_truth_values = dataset_goes_sgps100.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
     goesxrs_ground_truth_dates, goesxrs_ground_truth_values = dataset_goes_xrs.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
-    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_biosentinel.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
+    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_rad.get_series(context_start, date_end, delta_minutes=args.delta_minutes)
 
     goessgps10_ground_truth_values = dataset_goes_sgps10.unnormalize_data(goessgps10_ground_truth_values)
     goessgps100_ground_truth_values = dataset_goes_sgps100.unnormalize_data(goessgps100_ground_truth_values)
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
-    biosentinel_ground_truth_values = dataset_biosentinel.unnormalize_data(biosentinel_ground_truth_values)
+    biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
     file_name = os.path.join(args.target_dir, file_prefix)
     test_file = file_name + '.csv'
@@ -413,21 +413,21 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     dataset_goes_sgps10 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>10MeV')
     dataset_goes_sgps100 = GOESSGPS(data_dir_goes_sgps, date_start=full_start, date_end=date_end, column='>100MeV')
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=date_end)
-    dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=full_start, date_end=date_end)
+    dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=full_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
         dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=date_end, random_data=args.sdo_random_data)
-        full_start = max(dataset_sdo.date_start, dataset_goes_sgps10.date_start, dataset_goes_sgps100.date_start, dataset_goes_xrs.date_start, dataset_biosentinel.date_start) # need to reassign because data availability may change the start date
+        full_start = max(dataset_sdo.date_start, dataset_goes_sgps10.date_start, dataset_goes_sgps100.date_start, dataset_goes_xrs.date_start, dataset_rad.date_start) # need to reassign because data availability may change the start date
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
-        dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
             print('No data available for full sequence to generate video')
             return
         full_sequence = dataset_sequences[0]
         full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[5]]
     elif isinstance(model, RadRecurrent):
-        full_start = max(dataset_goes_xrs.date_start, dataset_biosentinel.date_start)
+        full_start = max(dataset_goes_xrs.date_start, dataset_rad.date_start)
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
-        dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
             print('No data available for full sequence to generate video')
             return
@@ -449,12 +449,12 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     goessgps10_ground_truth_dates, goessgps10_ground_truth_values = dataset_goes_sgps10.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     goessgps100_ground_truth_dates, goessgps100_ground_truth_values = dataset_goes_sgps100.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     goesxrs_ground_truth_dates, goesxrs_ground_truth_values = dataset_goes_xrs.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
-    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_biosentinel.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_rad.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     
     goessgps10_ground_truth_values = dataset_goes_sgps10.unnormalize_data(goessgps10_ground_truth_values)
     goessgps100_ground_truth_values = dataset_goes_sgps100.unnormalize_data(goessgps100_ground_truth_values)
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
-    biosentinel_ground_truth_values = dataset_biosentinel.unnormalize_data(biosentinel_ground_truth_values)
+    biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
     if isinstance(model, RadRecurrentWithSDO):
         fig, axs = plt.subplot_mosaic([['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'],
@@ -660,16 +660,16 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
                 context_goessgps10 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goessgps100 = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goesxrs = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[4][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_rad = full_sequence[4][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_data = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
                 prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
             elif isinstance(model, RadRecurrent):
                 context_goessgps10 = full_sequence[0][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goessgps100 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goesxrs = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_biosentinel], dim=1)
+                context_rad = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
                 context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
                 prediction_batch = model.predict(context_batch, prediction_window).detach()
             else:
@@ -682,7 +682,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
             goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
             goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
             goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
-            biosentinel_predictions = dataset_biosentinel.unnormalize_data(biosentinel_predictions).cpu().numpy()
+            biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
 
             title.set_text(title_prefix + ' ' + str(prediction_start_date))
@@ -805,24 +805,36 @@ def save_test_numpy(model, date_start, date_end, args):
     prediction_window = model.prediction_window * args.multiples_prediction_window
     full_end = date_end + datetime.timedelta(minutes=prediction_window * args.delta_minutes)
 
-    dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes)
-    dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes)
+    dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes, random_data=args.goes_xrs_random_data)
+    dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes, random_data=args.rad_random_data)
     if isinstance(model, RadRecurrentWithSDO):
         dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=full_end, random_data=args.sdo_random_data)
         full_start = max(dataset_sdo.date_start, 
-                        dataset_goes_xrs.date_start, dataset_biosentinel.date_start) # need to reassign because data availability may change the start date
+                        dataset_goes_xrs.date_start, dataset_rad.date_start) # need to reassign because data availability may change the start date
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
         dataset_sequences = Sequences([dataset_sdo, 
-                                    dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+                                    dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        if len(dataset_sequences) == 0:
+            print('No data available for full sequence to generate predictions')
+            return
+        full_sequence = dataset_sequences[0]
+        full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[3]]
+    elif isinstance(model, RadRecurrentWithSDOCore):
+        dataset_sdo = SDOCore(data_dir_sdo, date_start=full_start, date_end=full_end, random_data=args.sdo_random_data)
+        full_start = max(dataset_sdo.date_start,
+                        dataset_goes_xrs.date_start, dataset_rad.date_start)
+        time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
+        dataset_sequences = Sequences([dataset_sdo,
+                                    dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
             print('No data available for full sequence to generate predictions')
             return
         full_sequence = dataset_sequences[0]
         full_dates = [datetime.datetime.fromisoformat(d) for d in full_sequence[3]]
     elif isinstance(model, RadRecurrent):
-        full_start = max(dataset_goes_xrs.date_start, dataset_biosentinel.date_start)
+        full_start = max(dataset_goes_xrs.date_start, dataset_rad.date_start)
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
-        dataset_sequences = Sequences([dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=time_steps)
+        dataset_sequences = Sequences([dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
         if len(dataset_sequences) == 0:
             print('No data available for full sequence to generate predictions')
             return
@@ -840,11 +852,11 @@ def save_test_numpy(model, date_start, date_end, args):
     # goessgps10_ground_truth_dates, goessgps10_ground_truth_values = dataset_goes_sgps10.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     # goessgps100_ground_truth_dates, goessgps100_ground_truth_values = dataset_goes_sgps100.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     goesxrs_ground_truth_dates, goesxrs_ground_truth_values = dataset_goes_xrs.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
-    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_biosentinel.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
+    biosentinel_ground_truth_dates, biosentinel_ground_truth_values = dataset_rad.get_series(full_start, full_end, delta_minutes=args.delta_minutes)
     # goessgps10_ground_truth_values = dataset_goes_sgps10.unnormalize_data(goessgps10_ground_truth_values)
     # goessgps100_ground_truth_values = dataset_goes_sgps100.unnormalize_data(goessgps100_ground_truth_values)
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
-    biosentinel_ground_truth_values = dataset_biosentinel.unnormalize_data(biosentinel_ground_truth_values)
+    biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
     # number of datapoints (now-times)
     num_frames = len(full_dates) - model.context_window - prediction_window
@@ -863,10 +875,10 @@ def save_test_numpy(model, date_start, date_end, args):
             prediction_start_date = full_dates[prediction_start]
 
             if not prediction_start_date.day == current_now_day.day:
-                file_biosentinel = os.path.join(args.target_dir,'test-biosentinel-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
-                print('Saving into...',file_biosentinel)
+                file_rad = os.path.join(args.target_dir,'test-biosentinel-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                print('Saving into...',file_rad)
                 biosentinel_p = np.array(biosentinel_p)
-                np.save(file_biosentinel,biosentinel_p)
+                np.save(file_rad,biosentinel_p)
 
                 file_goesxrs = os.path.join(args.target_dir,'test-goesxrs-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
                 print('Saving into...',file_goesxrs)
@@ -887,14 +899,14 @@ def save_test_numpy(model, date_start, date_end, args):
                 context_sdo = full_sequence[0][context_start:context_end+1].to(args.device)
                 context_sdo_batch = context_sdo.unsqueeze(0)
                 context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_data = torch.cat([context_goesxrs, context_biosentinel], dim=1)
+                context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_data = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
                 prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
             elif isinstance(model, RadRecurrent):
                 context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_biosentinel = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context = torch.cat([context_goesxrs, context_biosentinel], dim=1)
+                context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
                 prediction_batch = model.predict(context_batch, prediction_window).detach()
             else:
@@ -903,7 +915,7 @@ def save_test_numpy(model, date_start, date_end, args):
             goesxrs_predictions = prediction_batch[:, :, 0]
             biosentinel_predictions = prediction_batch[:, :, 1]
             goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
-            biosentinel_predictions = dataset_biosentinel.unnormalize_data(biosentinel_predictions).cpu().numpy()
+            biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
 
             """#  divide predictions in within prediction window and beyond prediction window
@@ -932,8 +944,12 @@ def main():
     parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')#/home/emassara/2024-hl-radiation-ml/results
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
     parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
-    parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data')
-    parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context')
+    parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
+    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER', help='Radiation instrument')
+    parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
+    parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
+    parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
+    # parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context') ## Taking a different approach (i.e. passing random_data) for ablation study instead of using this flag
     parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
@@ -968,7 +984,28 @@ def main():
     # make sure the target directory exists
     os.makedirs(args.target_dir, exist_ok=True)
 
-    log_file = os.path.join(args.target_dir, 'log.txt')
+    ## Create the ablation study ids
+    if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
+        study_id = "study--solar-rad-xray_to_rad" ## This is the "max" study
+    elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
+        study_id = "study--solar-xray_to_rad"
+    elif not args.sdo_random_data and args.xray_random_data and args.rad_random_data:
+        study_id = "study--solar_to_rad"
+    elif args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
+        study_id = "study--xray_to_rad"
+    
+    ## Create the study directory with the folder structure as decided: /home/username/2024-hl-radiation-ml/results/solar-inst[SDOCORE]/rad-inst[CRaTER]/study–solar-rad-xray_to_rad
+    
+    main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}"
+    os.makedirs(main_study_dir, exist_ok=True)
+    
+    ## Create the various subdirectories to hold results, plots, etc for each study
+    subdirs = ['saved_model', 'train/plots', 'train/logs', 'test/plots', 'test/logs', 'test/saved_predictions', 'train/loss']
+    for subdir in subdirs:
+        os.makedirs(main_study_dir+'/'+subdir, exist_ok=True)
+
+    ## Create the log file for the study depending on the run.py mode
+    log_file = os.path.join(main_study_dir, {args.mode}, logs, 'log.txt')
 
     with Tee(log_file):
         print(description)    
@@ -990,18 +1027,19 @@ def main():
 
         sys.stdout.flush()
         if args.mode == 'train':
+            ## Creating Dataloaders...
             print('\n*** Training mode\n')
 
             training_sequence_length = args.context_window + args.prediction_window
 
             print('Processing excluded dates')
-            if args.model_type == 'RadRecurrentWithSDO':
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 datasets_sdo_valid = []
                 datasets_sdo_test = []
             datasets_goes_xrs_valid = []
-            datasets_biosentinel_valid = []
+            datasets_rad_valid = []
             datasets_goes_xrs_test = []
-            datasets_biosentinel_test = []
+            datasets_rad_test = []
 
             date_exclusions = []
             # Validation set
@@ -1017,17 +1055,19 @@ def main():
 
                     if args.model_type == 'RadRecurrentWithSDO':
                         datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
-                    datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
-                    datasets_biosentinel_valid.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
-            if args.model_type == 'RadRecurrentWithSDO':
+                    elif args.model_type == 'RadRecurrentWithSDOCore':
+                        datasets_sdo_valid.append(SDOCore(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
+                    datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes, random_data=args.xray_random_data))
+                    datasets_rad_valid.append(RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=exclusion_start, date_end=exclusion_end, rewind_minutes=args.delta_minutes, random_data=args.rad_random_data))
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 dataset_sdo_valid = UnionDataset(datasets_sdo_valid)
             dataset_goes_xrs_valid = UnionDataset(datasets_goes_xrs_valid)
-            dataset_biosentinel_valid = UnionDataset(datasets_biosentinel_valid)
-            if args.model_type == 'RadRecurrentWithSDO':
+            dataset_rad_valid = UnionDataset(datasets_rad_valid)
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 dataset_sequences_valid = Sequences([dataset_sdo_valid, 
-                                                    dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                                                    dataset_goes_xrs_valid, dataset_rad_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
             else:
-                dataset_sequences_valid = Sequences([dataset_goes_xrs_valid, dataset_biosentinel_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_valid = Sequences([dataset_goes_xrs_valid, dataset_rad_valid], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
 
             # Test set
             if args.test_event_id is not None:
@@ -1042,29 +1082,35 @@ def main():
 
                     if args.model_type == 'RadRecurrentWithSDO':
                         datasets_sdo_test.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
-                    datasets_goes_xrs_test.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
-                    datasets_biosentinel_test.append(RadLab(data_dir_radlab, instrument='BPD', date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes))
-            if args.model_type == 'RadRecurrentWithSDO':
+                    elif args.model_type == 'RadRecurrentWithSDOCore': 
+                        datasets_sdo_test.append(SDOCore(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
+                    datasets_goes_xrs_test.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes, random_data=args.xray_random_data))
+                    datasets_rad_test.append(RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes, random_data=args.rad_random_data))
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 dataset_sdo_test = UnionDataset(datasets_sdo_test)
             dataset_goes_xrs_test = UnionDataset(datasets_goes_xrs_test)
-            dataset_biosentinel_test = UnionDataset(datasets_biosentinel_test)
-            if args.model_type == 'RadRecurrentWithSDO':
+            dataset_rad_test = UnionDataset(datasets_rad_test)
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 dataset_sequences_test = Sequences([dataset_sdo_test, 
-                                                    dataset_goes_xrs_test, dataset_biosentinel_test], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                                                    dataset_goes_xrs_test, dataset_rad_test], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
             else:
-                dataset_sequences_test = Sequences([dataset_goes_xrs_test, dataset_biosentinel_test], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_test = Sequences([dataset_goes_xrs_test, dataset_rad_test], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
 
 
             # Training set
             if args.model_type == 'RadRecurrentWithSDO':
                 dataset_sdo = SDOMLlite(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
-            dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, rewind_minutes=args.delta_minutes)
-            dataset_biosentinel = RadLab(data_dir_radlab, instrument='BPD', date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, rewind_minutes=args.delta_minutes)
-            if args.model_type == 'RadRecurrentWithSDO':
+
+            elif args.model_type == 'RadRecurrentWithSDOCore':
+                dataset_sdo = SDOCore(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
+
+            dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, rewind_minutes=args.delta_minutes, random_data=args.xray_random_data)
+            dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, rewind_minutes=args.delta_minutes, random_data=args.rad_random_data)
+            if args.model_type in ['RadRecurrentWithSDO', 'RadRecurrentWithSDOCore']:
                 dataset_sequences_train = Sequences([dataset_sdo, 
-                                                    dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                                                    dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
             else:
-                dataset_sequences_train = Sequences([dataset_goes_xrs, dataset_biosentinel], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
+                dataset_sequences_train = Sequences([dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=training_sequence_length)
 
             print('\nTrain size: {:,}'.format(len(dataset_sequences_train)))
             print('Valid size: {:,}'.format(len(dataset_sequences_valid)))
@@ -1074,8 +1120,9 @@ def main():
             valid_loader = DataLoader(dataset_sequences_valid, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
             test_loader = DataLoader(dataset_sequences_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
+            ## Creating model...            
             # check if a previous training run exists in the target directory, if so, find the latest model file saved, resume training from there by loading the model instead of creating a new one
-            model_files = glob.glob('{}/epoch-*-model.pth'.format(args.target_dir))
+            model_files = glob.glob(f'{main_study_dir}/saved_model/epoch-*-model.pth')
             if len(model_files) > 0:
                 model_files.sort()
                 model_file = model_files[-1]
@@ -1102,7 +1149,8 @@ def main():
                     model_prediction_window = args.prediction_window
                     model = RadRecurrent(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, context_window=model_context_window, prediction_window=model_prediction_window)
                 elif args.model_type == 'RadRecurrentWithSDO':
-                    model_data_dim = 2
+                    model_data_dim_context = 2
+                    model_data_dim_prediction = 1
                     model_lstm_dim = 1024
                     model_lstm_depth = args.lstm_depth
                     model_dropout = 0.2
@@ -1110,7 +1158,32 @@ def main():
                     model_sdo_channels = 6
                     model_context_window = args.context_window
                     model_prediction_window = args.prediction_window
-                    model = RadRecurrentWithSDO(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, sdo_channels=model_sdo_channels, sdo_dim=model_sdo_dim, context_window=model_context_window, prediction_window=model_prediction_window, sdo_only_context=args.sdo_only_context)
+                    model = RadRecurrentWithSDO(data_dim=model_data_dim, 
+                                                lstm_dim=model_lstm_dim, 
+                                                lstm_depth=model_lstm_depth, 
+                                                dropout=model_dropout, 
+                                                sdo_channels=model_sdo_channels, 
+                                                sdo_dim=model_sdo_dim, 
+                                                context_window=model_context_window, 
+                                                prediction_window=model_prediction_window, 
+                                                # sdo_only_context=args.sdo_only_context ## This was for ablation but we implemented it differently now.
+                                            )
+                elif args.model_type == 'RadRecurrentWithSDOCore':
+                    model_data_dim_context = 2
+                    model_data_dim_prediction = 1
+                    model_lstm_dim = 1024
+                    model_lstm_depth = args.lstm_depth
+                    model_dropout = 0.2 
+                    model_context_window = args.context_window
+                    model_prediction_window = args.prediction_window
+                    model = RadRecurrentWithSDOCore(data_dim_context=model_data_dim_context, 
+                                                    data_dim_prediction=model_data_dim_prediction, 
+                                                    lstm_dim=model_lstm_dim, 
+                                                    lstm_depth=model_lstm_depth, 
+                                                    dropout=model_dropout, 
+                                                    context_window=model_context_window, 
+                                                    prediction_window=model_prediction_window)
+
                 else:
                     raise ValueError('Unknown model type: {}'.format(args.model_type))
                 
@@ -1129,6 +1202,10 @@ def main():
             num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print('\nNumber of parameters: {:,}\n'.format(num_params))
 
+            ## Open file for saving epoch-wise losses
+            epoch_losses_filepath = '{}/epoch_losses.txt'.format(main_study_dir+"/train/loss", epoch_start+1)
+            epoch_losses_file = open(epoch_losses_filepath, 'a')
+            epoch_losses_file.write('Epoch TrainLoss ValidLoss\n')
             for epoch in range(epoch_start, args.epochs):
                 epoch_start = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} started {}'.format(epoch+1, args.epochs, epoch_start))
@@ -1154,7 +1231,31 @@ def main():
 
                             # prediction window
                             input = data[:, model.context_window:-1]
-                            target = data[:, model.context_window+1:]
+                            target = data[-1, model.context_window+1:]
+
+                            model.init(batch_size)
+                            optimizer.zero_grad()
+                            model.forward_context(context_sdo, context_data)
+                            output = model.forward(input)
+                        
+                        if isinstance(model, RadRecurrentWithSDOCore):
+                            (sdo, goesxrs, biosentinel, _) = batch
+                            batch_size = goesxrs.shape[0]
+
+                            sdo = sdo.to(device)
+                            goesxrs = goesxrs.to(device)
+                            biosentinel = biosentinel.to(device)
+                            goesxrs = goesxrs.unsqueeze(-1)
+                            biosentinel = biosentinel.unsqueeze(-1)
+                            data = torch.cat([goesxrs, biosentinel], dim=2)
+
+                            # context window
+                            context_sdo = sdo[:, :model.context_window]
+                            context_data = data[:, :model.context_window]
+
+                            # prediction window
+                            input = data[:, model.context_window:-1]
+                            target = data[-1, model.context_window+1:]
 
                             model.init(batch_size)
                             optimizer.zero_grad()
@@ -1162,7 +1263,7 @@ def main():
                             output = model.forward(input)
 
 
-                        elif isinstance(model, RadRecurrent):
+                        elif isinstance(model, RadRecurrent): ## This is deprecated now, will be removed in the future.
                             (goesxrs, biosentinel, _) = batch
                             batch_size = goesxrs.shape[0]
 
@@ -1186,14 +1287,14 @@ def main():
                         optimizer.step()
 
                         ##### Intermediate outputs #####
-                        train_loss_file = '{}/epoch-{:03d}-train_loss.txt'.format(args.target_dir, epoch+1)
+                        train_loss_file = '{}/epoch-{:03d}-train_loss.txt'.format(main_study_dir+"/train/loss", epoch+1)
                         f = open(train_loss_file, 'a')
                         f.write('%d %.5e\n'%(iteration, float(loss)))
                         f.close()
-                        # Save model
-                        if iteration%50==0:
-                            model_file_intermediate = '{}/intermediate_epoch-{:03d}-model.pth'.format(args.target_dir, epoch+1)
-                            save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file_intermediate)
+                        # # Save model
+                        # if iteration%50==0:
+                        #     model_file_intermediate = '{}/intermediate_epoch-{:03d}-model.pth'.format(main_study_dir+"/train/saved_model", epoch+1)
+                        #     save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file_intermediate)
                         ############
 
                         train_losses.append((iteration, float(loss)))
@@ -1261,13 +1362,19 @@ def main():
                     print('\nEpoch: {:,}/{:,} | Iter: {:,}/{:,} | Loss: {:.4f} | Valid loss: {:.4f}'.format(epoch+1, args.epochs, i+1, len(train_loader), float(loss), valid_loss))
                     valid_losses.append((iteration, valid_loss))
                 
+                
+                ## Append the epoch-wise losses to the file
+                mean_train_loss = np.mean([loss for _, loss in train_losses])
+                epoch_losses_file.write('%d %.5e %.5e\n'%(epoch, mean_train_loss, valid_loss))
+                
+
                 # Save model
-                model_file = '{}/epoch-{:03d}-model.pth'.format(args.target_dir, epoch+1)
+                model_file = '{}/epoch-{:03d}-model.pth'.format(main_study_dir+"/saved_model", epoch+1)
                 save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file)
 
-
+                
                 # Plot losses
-                plot_file = '{}/epoch-{:03d}-loss.pdf'.format(args.target_dir, epoch+1)
+                plot_file = '{}/epoch-{:03d}-loss.pdf'.format(main_study_dir+"/train/plots", epoch+1)
                 save_loss_plot(train_losses, valid_losses, plot_file)
 
                 # if args.test_event_id is not None:
@@ -1298,7 +1405,6 @@ def main():
 
                 epoch_end = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} ended {}, duration {}'.format(epoch+1, args.epochs, epoch_end, epoch_end - epoch_start))
-        
 
         if args.mode == 'test':
             print('\n*** Testing mode\n')

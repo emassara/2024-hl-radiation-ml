@@ -115,9 +115,17 @@ class RadRecurrent(nn.Module):
 
 
 class RadRecurrentWithSDO(nn.Module):
-    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_channels=6, sdo_dim=1024, context_window=10, prediction_window=10, sdo_only_context=False):
+    def __init__(self, 
+                # data_dim=2, 
+                data_dim_context=2, data_dim_predict=1, 
+                lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_channels=6, sdo_dim=1024, 
+                context_window=10, prediction_window=10, 
+                # sdo_only_context=False
+            ):
         super().__init__()
-        self.data_dim = data_dim
+        # self.data_dim = data_dim
+        self.data_dim_context = data_dim_context
+        self.data_dim_predict = data_dim_predict
         self.lstm_dim = lstm_dim
         self.lstm_depth = lstm_depth
         self.dropout = dropout
@@ -125,11 +133,11 @@ class RadRecurrentWithSDO(nn.Module):
         self.sdo_dim = sdo_dim
         self.context_window = context_window # Not used within model, only for reference
         self.prediction_window = prediction_window # Not used within model, only for reference
-        self.sdo_only_context = sdo_only_context
+        # self.sdo_only_context = sdo_only_context
 
         self.sdo_embedding = SDOEmbedding(channels=sdo_channels, embedding_dim=sdo_dim)
-        self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
-        self.lstm_predict = nn.LSTM(input_size=data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
+        self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim_context, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
+        self.lstm_predict = nn.LSTM(input_size=data_dim_predict, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
         self.fc1 = nn.Linear(lstm_dim, data_dim)
         self.dropout1 = nn.Dropout(dropout)
         self.hidden_context = None
@@ -146,8 +154,8 @@ class RadRecurrentWithSDO(nn.Module):
     def forward_context(self, sdo, data):
         # sdo has shape (batch_size, seq_len, channels, size, size)
         # data has shape (batch_size, seq_len, self.data_dim)
-        if self.sdo_only_context:
-            data = torch.zeros_like(data)
+        # if self.sdo_only_context:
+        #     data = torch.zeros_like(data)
 
         batch_size = sdo.shape[0]
         seq_len = sdo.shape[1]
@@ -204,9 +212,14 @@ class RadRecurrentWithSDOCore(nn.Module):
     """
     RadRecurrentWithSDO variant for SDOCore embeddings dataset instead of SDOML-lite video dataset. Does not require the SDOEmbedding model.
     """
-    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_dim=21504, context_window=10, prediction_window=10):
+    def __init__(self, 
+                # data_dim=2, 
+                data_dim_context=2, data_dim_predict=1,
+                lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_dim=21504, context_window=10, prediction_window=10):
         super().__init__()
-        self.data_dim = data_dim
+        # self.data_dim = data_dim
+        self.data_dim_context = data_dim_context
+        self.data_dim_predict = data_dim_predict
         self.lstm_dim = lstm_dim
         self.lstm_depth = lstm_depth
         self.dropout = dropout
@@ -214,8 +227,8 @@ class RadRecurrentWithSDOCore(nn.Module):
         self.context_window = context_window
         self.prediction_window = prediction_window
 
-        self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
-        self.lstm_predict = nn.LSTM(input_size=data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
+        self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim_context, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
+        self.lstm_predict = nn.LSTM(input_size=data_dim_predict, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
 
         self.fc1 = nn.Linear(lstm_dim, data_dim)
         self.dropout1 = nn.Dropout(dropout)

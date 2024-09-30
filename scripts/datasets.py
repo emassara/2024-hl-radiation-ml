@@ -15,7 +15,9 @@ import math
 
 
 class SDOMLlite(Dataset):
-    def __init__(self, data_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], date_start=None, date_end=None, date_exclusions=None, random_data=False):
+    def __init__(self, data_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], 
+                    date_start=None, date_end=None, date_exclusions=None, 
+                    random_data=False):
         self.data_dir = data_dir
         self.channels = channels
         print('\nSDOML-lite')
@@ -63,7 +65,7 @@ class SDOMLlite(Dataset):
         else:
             date_exclusions_postfix = ''
 
-        if self.random_data:
+        if self.random_data: ## 
             self.dates = []
             for i in range(total_steps):
                 date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
@@ -204,13 +206,19 @@ class SDOMLlite(Dataset):
             data = data ** 2.
         return data
 
-
 class PandasDataset(Dataset):
-    def __init__(self, name, data_frame, column, delta_minutes, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
+    def __init__(self, name, data_frame, column, delta_minutes, 
+                date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None,
+                random_data=False, random_data_shape=1):
         self.name = name
         self.data = data_frame
         self.column = column
         self.delta_minutes = delta_minutes
+
+        self.random_data = random_data
+        if random_data:
+            self.random_data_shape = random_data_shape
+            print('Random data: True')
 
         print('Delta minutes        : {:,}'.format(self.delta_minutes))
         self.normalize = normalize
@@ -313,27 +321,29 @@ class PandasDataset(Dataset):
     def get_data(self, date):
         # if date < self.date_start or date > self.date_end:
         #     raise ValueError('Date ({}) out of range for RadLab ({}; {} - {})'.format(date, self.instrument, self.date_start, self.date_end))
-
-        if date not in self.dates_set:
-            print('{} date not found: {}'.format(self.name, date))
-            # find the most recent date available before date, in pandas dataframe self.data
-            dates_available = self.data[self.data['datetime'] < date]
-            if len(dates_available) > 0:
-                date_previous = dates_available.iloc[-1]['datetime']
-                if date - date_previous < datetime.timedelta(minutes=self.rewind_minutes):
-                    print('{} rewinding to  : {}'.format(self.name, date_previous))
-                    data = self.data[self.data['datetime'] == date_previous][self.column]
+        if not random_data:
+            if date not in self.dates_set:
+                print('{} date not found: {}'.format(self.name, date))
+                # find the most recent date available before date, in pandas dataframe self.data
+                dates_available = self.data[self.data['datetime'] < date]
+                if len(dates_available) > 0:
+                    date_previous = dates_available.iloc[-1]['datetime']
+                    if date - date_previous < datetime.timedelta(minutes=self.rewind_minutes):
+                        print('{} rewinding to  : {}'.format(self.name, date_previous))
+                        data = self.data[self.data['datetime'] == date_previous][self.column]
+                    else:
+                        return None
                 else:
                     return None
             else:
-                return None
+                data = self.data[self.data['datetime'] == date][self.column]
+                if len(data) == 0:
+                    raise RuntimeError('Should not happen')
+            data = torch.tensor(data.values[0])
+            if self.normalize:
+                data = self.normalize_data(data)
         else:
-            data = self.data[self.data['datetime'] == date][self.column]
-            if len(data) == 0:
-                raise RuntimeError('Should not happen')
-        data = torch.tensor(data.values[0])
-        if self.normalize:
-            data = self.normalize_data(data)
+            data = torch.randn(self.random_data_shape) ## a random tensor for ablation study
 
         return data
 
@@ -401,11 +411,18 @@ class UnionDataset(Dataset):
                 return value, date
         return None, None
 
+
 class SDOCore(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=False, rewind_minutes=15, date_exclusions=None):
+    def __init__(self, file_name, date_start=None, date_end=None, normalize=False, 
+                rewind_minutes=15, date_exclusions=None, random_data=False, random_data_shape=21504):
         print('\nSDO Core')
         print('File                 : {}'.format(file_name))
         delta_minutes = 12
+
+        self.random_data = random_data
+        if random_data:
+            self.random_data_shape = torch.Size([1, random_data_shape])
+            print('Random data: True')
 
         ## Read the h5 file
         f = h5py.File(self.data_filepath, 'r')
@@ -426,7 +443,8 @@ class SDOCore(PandasDataset):
         self.datetimes = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
         print('Rows                 : {:,}'.format(len(datatimes)))
 
-        super().__init__('SDO Core', data, 'latent', delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+        super().__init__('SDO Core', data, 'latent', delta_minutes, date_start, date_end, 
+                        normalize, rewind_minutes, date_exclusions, random_data, random_data_shape)
     
     def normalize_data(self, data):
         raise NotImplementedError('normalize_data not implemented')
@@ -436,7 +454,9 @@ class SDOCore(PandasDataset):
         
 
 class GOESXRS(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
+    def __init__(self, file_name, date_start=None, date_end=None, 
+                normalize=True, rewind_minutes=15, date_exclusions=None,
+                random_data=False, random_data_shape=1):
         print('\nGOES X-ray Sensor (XRS)')
         print('File                 : {}'.format(file_name))
         delta_minutes = 1
@@ -448,7 +468,8 @@ class GOESXRS(PandasDataset):
 
         data = data[data['xrsb2_flux'] > 3e-8]
 
-        super().__init__('GOES X-ray Sensor (XRS)', data, 'xrsb2_flux', delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+        super().__init__('GOES X-ray Sensor (XRS)', data, 'xrsb2_flux', delta_minutes, date_start, date_end, 
+                        normalize, rewind_minutes, date_exclusions, random_data, random_data_shape)
 
     def normalize_data(self, data):
         data = torch.log(data + 1e-8)
@@ -469,7 +490,9 @@ class GOESXRS(PandasDataset):
 
 # Data units: particles / (cm^2 . s . sr)
 class GOESSGPS(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None, column='>10MeV'):
+    def __init__(self, file_name, date_start=None, date_end=None, 
+                normalize=True, rewind_minutes=15, date_exclusions=None, column='>10MeV',
+                random_data=False, random_data_shape=1):
         print('\nGOES Solar and Galactic Proton Sensors (SGPS) ({})'.format(column))
         print('File                 : {}'.format(file_name))
         delta_minutes = 1
@@ -485,7 +508,9 @@ class GOESSGPS(PandasDataset):
 
         data = data[data[column] > 0.]
 
-        super().__init__('GOES Solar and Galactic Proton Sensors (SGPS)', data, column, delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+        super().__init__('GOES Solar and Galactic Proton Sensors (SGPS)', data, column, 
+                        delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions, 
+                        random_data, random_data_shape)
 
     def normalize_data(self, data):
         if self.column == '>10MeV':
@@ -529,7 +554,9 @@ def cube_root(x):
 
 
 class RSTNRadio(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
+    def __init__(self, file_name, date_start=None, date_end=None, normalize=True, 
+                rewind_minutes=15, date_exclusions=None, 
+                random_data=False, random_data_shape=1):
         print('\nRadio Solar Telescope Network (RSTN) Solar Radio Burst')
         print('File                 : {}'.format(file_name))
         delta_minutes = 1
@@ -545,7 +572,9 @@ class RSTNRadio(PandasDataset):
         q_hi  = data[column].quantile(0.999)
         data = data[(data[column] < q_hi) & (data[column] > q_low)]
 
-        super().__init__('Radio Solar Telescope Network (RSTN) Solar Radio Burst', data, column, delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+        super().__init__('Radio Solar Telescope Network (RSTN) Solar Radio Burst', data, column, 
+                        delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions,
+                        random_data, random_data_shape)
 
     def normalize_data(self, data):
         data = cube_root(data)
@@ -566,9 +595,10 @@ class RSTNRadio(PandasDataset):
 
 # BioSentinel: 2022-11-16T11:00:00 - 2024-05-14T09:15:00
 class RadLab(PandasDataset):
-    def __init__(self, file_name, instrument='BPD', date_start=None, date_end=None, normalize=True, rewind_minutes=15, date_exclusions=None):
+    def __init__(self, file_name, instrument='BPD', date_start=None, date_end=None, normalize=True, 
+                rewind_minutes=15, date_exclusions=None, 
+                random_data=False, random_data_shape=1):
         self.instrument = instrument
-        
         name = 'RadLab ({})'.format(self.instrument)
         print('\n{}'.format(name))
         print('File                 : {}'.format(file_name))
@@ -609,7 +639,9 @@ class RadLab(PandasDataset):
         else:
             raise RuntimeError('Unsupported instrument: {}'.format(self.instrument))
         
-        super().__init__(name, data, 'absorbed_dose_rate', delta_minutes, date_start, date_end, normalize, rewind_minutes, date_exclusions)
+        super().__init__(name, data, 'absorbed_dose_rate', delta_minutes, date_start, date_end, normalize, 
+                        rewind_minutes, date_exclusions, 
+                        random_data, random_data_shape)
 
     def normalize_data(self, data):
         if self.instrument == 'BPD':
