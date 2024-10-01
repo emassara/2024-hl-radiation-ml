@@ -15,7 +15,7 @@ import math
 
 
 class SDOMLlite(Dataset):
-    def __init__(self, data_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], 
+    def __init__(self, data_dir, tar_dir, channels=['hmi_m', 'aia_0131', 'aia_0171', 'aia_0193', 'aia_0211', 'aia_1600'], 
                     date_start=None, date_end=None, date_exclusions=None, 
                     random_data=False):
         self.data_dir = data_dir
@@ -29,7 +29,7 @@ class SDOMLlite(Dataset):
 
         print('Directory  : {}'.format(self.data_dir))
 
-        self.data = WebDataset(data_dir)
+        self.data = WebDataset(data_dir,tar_dir)
 
         self.date_start, self.date_end = self.find_date_range()
         if date_start is not None:
@@ -65,7 +65,7 @@ class SDOMLlite(Dataset):
         else:
             date_exclusions_postfix = ''
 
-        if self.random_data: ## 
+        if self.random_data: 
             self.dates = []
             for i in range(total_steps):
                 date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
@@ -79,36 +79,36 @@ class SDOMLlite(Dataset):
                     self.dates.append(date)
         else:
             self.dates = []
-            dates_cache = 'dates_index_{}_{}_{}{}'.format('_'.join(self.channels), self.date_start.isoformat(), self.date_end.isoformat(), date_exclusions_postfix)
-            dates_cache = os.path.join('./../results/', dates_cache) #changed #self.data_dir, dates_cache)
-            if os.path.exists(dates_cache):
-                print('Loading dates from cache: {}'.format(dates_cache))
-                with open(dates_cache, 'rb') as f:
-                    self.dates = pickle.load(f)
-            else:        
-                for i in tqdm(range(total_steps), desc='Checking complete channels'):
-                    date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
-                    exists = True
-                    prefix = self.date_to_prefix(date)
-                    data = self.data.index.get(prefix)
-                    if data is None:
-                        exists = False
-                    else:
-                        for channel in self.channels:
-                            postfix = channel+'.npy'
-                            if postfix not in data:
-                                exists = False
-                                break
-                    if self.date_exclusions is not None:
-                        for exclusion_date_start, exclusion_date_end in self.date_exclusions:
-                            if (date >= exclusion_date_start) and (date < exclusion_date_end):
-                                exists = False
-                                break
-                    if exists:
-                        self.dates.append(date)
-                print('Saving dates to cache: {}'.format(dates_cache))
-                with open(dates_cache, 'wb') as f:
-                    pickle.dump(self.dates, f)
+            # dates_cache = 'dates_index_{}_{}_{}{}'.format('_'.join(self.channels), self.date_start.isoformat(), self.date_end.isoformat(), date_exclusions_postfix)
+            # dates_cache = os.path.join('./../results/', dates_cache) #changed #self.data_dir, dates_cache)
+            # if os.path.exists(dates_cache):
+            #     print('Loading dates from cache: {}'.format(dates_cache))
+            #     with open(dates_cache, 'rb') as f:
+            #         self.dates = pickle.load(f)
+            # else:        
+            for i in tqdm(range(total_steps), desc='Checking complete channels'):
+                date = self.date_start + datetime.timedelta(minutes=self.delta_minutes*i)
+                exists = True
+                prefix = self.date_to_prefix(date)
+                data = self.data.index.get(prefix)
+                if data is None:
+                    exists = False
+                else:
+                    for channel in self.channels:
+                        postfix = channel+'.npy'
+                        if postfix not in data:
+                            exists = False
+                            break
+                if self.date_exclusions is not None:
+                    for exclusion_date_start, exclusion_date_end in self.date_exclusions:
+                        if (date >= exclusion_date_start) and (date < exclusion_date_end):
+                            exists = False
+                            break
+                if exists:
+                    self.dates.append(date)
+            # print('Saving dates to cache: {}'.format(dates_cache))
+            # with open(dates_cache, 'wb') as f:
+            #     pickle.dump(self.dates, f)
             
         if len(self.dates) == 0:
             raise RuntimeError('No frames found with given list of channels')
@@ -773,12 +773,12 @@ class Sequences(Dataset):
 
 
 class TarRandomAccess():
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, tar_dir):
         tar_files = sorted(glob(os.path.join(data_dir, '*.tar')))
         if len(tar_files) == 0:
             raise ValueError('No tar files found in data directory: {}'.format(data_dir))
         self.index = {}
-        index_cache = os.path.join('./../results', 'tar_files_index') #changed index_cache = os.path.join(data_dir, 'tar_files_index')
+        index_cache = os.path.join(tar_dir, 'tar_files_index') #changed index_cache = os.path.join(data_dir, 'tar_files_index')
         if os.path.exists(index_cache):
             print('Loading tar files index from cache: {}'.format(index_cache))
             with open(index_cache, 'rb') as file:
@@ -804,8 +804,8 @@ class TarRandomAccess():
 
 
 class WebDataset():
-    def __init__(self, data_dir, decode_func=None):
-        self.tars = TarRandomAccess(data_dir)
+    def __init__(self, data_dir, tar_dir, decode_func=None):
+        self.tars = TarRandomAccess(data_dir, tar_dir)
         if decode_func is None:
             self.decode_func = self.decode
         else:

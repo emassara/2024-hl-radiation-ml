@@ -324,7 +324,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=context_start, date_end=date_end)
     dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=context_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
-        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=context_start, date_end=date_end, random_data=args.sdo_random_data)
+        dataset_sdo = SDOMLlite(data_dir_sdo, main_study_dir, date_start=context_start, date_end=date_end, random_data=args.sdo_random_data)
         dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
@@ -415,7 +415,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=date_end)
     dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=full_start, date_end=date_end)
     if isinstance(model, RadRecurrentWithSDO):
-        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=date_end, random_data=args.sdo_random_data)
+        dataset_sdo = SDOMLlite(data_dir_sdo, main_study_dir, date_start=full_start, date_end=date_end, random_data=args.sdo_random_data)
         full_start = max(dataset_sdo.date_start, dataset_goes_sgps10.date_start, dataset_goes_sgps100.date_start, dataset_goes_xrs.date_start, dataset_rad.date_start) # need to reassign because data availability may change the start date
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
         dataset_sequences = Sequences([dataset_sdo, dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=time_steps)
@@ -793,7 +793,7 @@ def save_loss_plot(train_losses, valid_losses, plot_file):
     plt.savefig(plot_file)    
 
 
-def save_test_numpy(model, date_start, date_end, args):
+def save_test_numpy(model, date_start, date_end, main_study_dir, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
     data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
@@ -808,7 +808,7 @@ def save_test_numpy(model, date_start, date_end, args):
     dataset_goes_xrs = GOESXRS(data_dir_goes_xrs, date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes, random_data=args.goes_xrs_random_data)
     dataset_rad = RadLab(data_dir_radlab, instrument=args.rad_inst, date_start=full_start, date_end=full_end, rewind_minutes=args.delta_minutes, random_data=args.rad_random_data)
     if isinstance(model, RadRecurrentWithSDO):
-        dataset_sdo = SDOMLlite(data_dir_sdo, date_start=full_start, date_end=full_end, random_data=args.sdo_random_data)
+        dataset_sdo = SDOMLlite(data_dir_sdo, main_study_dir, date_start=full_start, date_end=full_end, random_data=args.sdo_random_data)
         full_start = max(dataset_sdo.date_start, 
                         dataset_goes_xrs.date_start, dataset_rad.date_start) # need to reassign because data availability may change the start date
         time_steps = int((full_end - full_start).total_seconds() / (args.delta_minutes * 60))
@@ -875,17 +875,17 @@ def save_test_numpy(model, date_start, date_end, args):
             prediction_start_date = full_dates[prediction_start]
 
             if not prediction_start_date.day == current_now_day.day:
-                file_rad = os.path.join(args.target_dir,'test-biosentinel-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                file_rad = main_study_dir+'/test_saved_predictions/test-biosentinel-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_rad)
                 biosentinel_p = np.array(biosentinel_p)
                 np.save(file_rad,biosentinel_p)
 
-                file_goesxrs = os.path.join(args.target_dir,'test-goesxrs-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                file_goesxrs = main_study_dir+'/test_saved_predictions/test-goesxrs-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_goesxrs)
                 goesxrs_p = np.array(goesxrs_p)
                 np.save(file_goesxrs,goesxrs_p)
                 
-                file_dates = os.path.join(args.target_dir,'test-dates-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window))
+                file_dates = main_study_dir+'/test_saved_predictions/test-dates-{}-{}wprediction.npy'.format(current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_dates)
                 dates_p = np.array(dates_p)
                 np.save(file_dates,dates_p)
@@ -943,7 +943,7 @@ def main():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--target_dir', type=str, required=True, help='Directory to store results')#/home/emassara/2024-hl-radiation-ml/results
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
-    parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
+    #parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
     parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER', help='Radiation instrument')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
@@ -957,7 +957,7 @@ def main():
     parser.add_argument('--prediction_window', type=int, default=50, help='Prediction window')
     parser.add_argument('--num_samples', type=int, default=50, help='Number of samples for MC dropout inference')
     parser.add_argument('--delta_minutes', type=int, default=15, help='Delta minutes') # maybe set it to the cadence of solar images (12 for SDOcore, 15 for SDOMLlite)
-    parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=2, help='Batch size')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers')
     parser.add_argument('--seed', type=int, default=0, help='Random number generator seed')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
@@ -966,7 +966,7 @@ def main():
     parser.add_argument('--valid_proportion', type=float, default=0.05, help='Validation frequency in iterations')
     parser.add_argument('--device', type=str, default='cpu', help='Device')
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
-    parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO'], default='RadRecurrentWithSDO', help='Model type')
+    parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date')
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')
@@ -980,6 +980,10 @@ def main():
     parser.add_argument('--multiples_prediction_window', type=int, default=1, help='multiples_prediction_window')
 
     args = parser.parse_args()
+    if args.solar_dataset == 'SDOMLlite':
+        args.sdo_dir = 'sdoml-lite'
+    elif args.solar_dataset == 'SDOCore':
+        args.sdo_dir = 'sdocore'
 
     # make sure the target directory exists
     os.makedirs(args.target_dir, exist_ok=True)
@@ -995,8 +999,7 @@ def main():
         study_id = "study--xray_to_rad"
     
     ## Create the study directory with the folder structure as decided: /home/username/2024-hl-radiation-ml/results/solar-inst[SDOCORE]/rad-inst[CRaTER]/study–solar-rad-xray_to_rad
-    
-    main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}"
+    main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}/{args.date_start}-{args.date_end}"
     os.makedirs(main_study_dir, exist_ok=True)
     
     ## Create the various subdirectories to hold results, plots, etc for each study
@@ -1005,7 +1008,7 @@ def main():
         os.makedirs(main_study_dir+'/'+subdir, exist_ok=True)
 
     ## Create the log file for the study depending on the run.py mode
-    log_file = os.path.join(main_study_dir, {args.mode}, logs, 'log.txt')
+    log_file = os.path.join(main_study_dir, f'{args.mode}/log.txt')
 
     with Tee(log_file):
         print(description)    
@@ -1054,7 +1057,7 @@ def main():
                     date_exclusions.append((exclusion_start, exclusion_end))
 
                     if args.model_type == 'RadRecurrentWithSDO':
-                        datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
+                        datasets_sdo_valid.append(SDOMLlite(data_dir_sdo, main_study_dir, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
                     elif args.model_type == 'RadRecurrentWithSDOCore':
                         datasets_sdo_valid.append(SDOCore(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
                     datasets_goes_xrs_valid.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes, random_data=args.xray_random_data))
@@ -1081,7 +1084,7 @@ def main():
                     date_exclusions.append((exclusion_start, exclusion_end))
 
                     if args.model_type == 'RadRecurrentWithSDO':
-                        datasets_sdo_test.append(SDOMLlite(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
+                        datasets_sdo_test.append(SDOMLlite(data_dir_sdo, main_study_dir, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
                     elif args.model_type == 'RadRecurrentWithSDOCore': 
                         datasets_sdo_test.append(SDOCore(data_dir_sdo, date_start=exclusion_start, date_end=exclusion_end, random_data=args.sdo_random_data))
                     datasets_goes_xrs_test.append(GOESXRS(data_dir_goes_xrs, date_start=exclusion_start, date_end=exclusion_end,rewind_minutes=args.delta_minutes, random_data=args.xray_random_data))
@@ -1099,7 +1102,7 @@ def main():
 
             # Training set
             if args.model_type == 'RadRecurrentWithSDO':
-                dataset_sdo = SDOMLlite(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
+                dataset_sdo = SDOMLlite(data_dir_sdo, main_study_dir, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
 
             elif args.model_type == 'RadRecurrentWithSDOCore':
                 dataset_sdo = SDOCore(data_dir_sdo, date_start=args.date_start, date_end=args.date_end, date_exclusions=date_exclusions, random_data=args.sdo_random_data)
@@ -1440,7 +1443,7 @@ def main():
 
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                save_test_numpy(model, date_start, date_end, args)
+                save_test_numpy(model, date_start, date_end, main_study_dir, args)
                 #plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
                 #run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
 
