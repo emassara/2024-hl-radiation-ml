@@ -19,7 +19,7 @@ import matplotlib.animation as animation
 import glob
 import sunpy.visualization.colormaps as sunpycm
 
-from datasets import SDOMLlite, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
+from datasets import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
 from events_months import EventCatalog
 
@@ -945,7 +945,7 @@ def main():
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
     #parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
-    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER', help='Radiation instrument')
+    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER-D1D2', help='Radiation instrument')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
     parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
     parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
@@ -953,12 +953,12 @@ def main():
     parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
-    parser.add_argument('--context_window', type=int, default=50, help='Context window')
-    parser.add_argument('--prediction_window', type=int, default=50, help='Prediction window')
+    parser.add_argument('--context_window', type=int, default=40, help='Context window')
+    parser.add_argument('--prediction_window', type=int, default=40, help='Prediction window')
     parser.add_argument('--num_samples', type=int, default=50, help='Number of samples for MC dropout inference')
     parser.add_argument('--delta_minutes', type=int, default=15, help='Delta minutes') # maybe set it to the cadence of solar images (12 for SDOcore, 15 for SDOMLlite)
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size')
-    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers')
+    parser.add_argument('--num_workers', type=int, default=8, help='Number of workers')
     parser.add_argument('--seed', type=int, default=0, help='Random number generator seed')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
@@ -968,10 +968,10 @@ def main():
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
-    parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date')
-    parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')
-    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
-    parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
+    parser.add_argument('--date_start', type=str, default='2017-02-01T00:00:00', help='Start date') #default='2022-11-16T11:00:00'
+    parser.add_argument('--date_end', type=str, default='2017-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
+    parser.add_argument('--test_event_id', nargs='+', default=['test08'], help='Test event IDs')
+    parser.add_argument('--valid_event_id', nargs='+', default=['valid08'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
     # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')

@@ -12,6 +12,7 @@ import pickle
 from functools import lru_cache
 import duckdb
 import math
+import h5py
 
 
 class SDOMLlite(Dataset):
@@ -226,10 +227,11 @@ class PandasDataset(Dataset):
         self.rewind_minutes = rewind_minutes
         print('Rewind minutes       : {:,}'.format(self.rewind_minutes))
 
-        self.data[column] = self.data[column].astype(np.float32)
+        if self.name != 'SDO Core':
+            self.data[column] = self.data[column].astype(np.float32)
 
-        self.data.replace([np.inf, -np.inf], np.nan, inplace=True)
-        self.data = self.data.dropna()
+            self.data.replace([np.inf, -np.inf], np.nan, inplace=True)
+            self.data = self.data.dropna()
 
         # Get dates available
         self.dates = [date.to_pydatetime() for date in self.data['datetime']]
@@ -253,7 +255,7 @@ class PandasDataset(Dataset):
             else:
                 print('End date out of range, using default')        
 
-        if not 'CRaTER' in self.name: # Very bad hack, need to fix this for CRaTER
+        if not 'CRaTER' in self.name and not 'SDO Core' in self.name: # Very bad hack, need to fix this for CRaTER
             # if the date of the first row of data after self.date_start does not end in minutes :00, :15, :30, or :45, move forward to the next minute that does
             time_out = 1000
             while True:
@@ -339,8 +341,11 @@ class PandasDataset(Dataset):
                 data = self.data[self.data['datetime'] == date][self.column]
                 if len(data) == 0:
                     raise RuntimeError('Should not happen')
+            print(data)
             data = torch.tensor(data.values[0])
-            if self.normalize:
+            print(data)
+            sys.exit()
+            if self.normalize and self.name !='SDO Core':
                 data = self.normalize_data(data)
         else:
             data = torch.randn(self.random_data_shape) ## a random tensor for ablation study
@@ -413,19 +418,19 @@ class UnionDataset(Dataset):
 
 
 class SDOCore(PandasDataset):
-    def __init__(self, file_name, date_start=None, date_end=None, normalize=False, 
-                rewind_minutes=15, date_exclusions=None, random_data=False, random_data_shape=21504):
+    def __init__(self, sdocore_dir, date_start=None, date_end=None, normalize=False, 
+                rewind_minutes=10, date_exclusions=None, random_data=False, data_len=21504):
+        file_name = sdocore_dir + '/sdo_core_dataset_21504.h5'
         print('\nSDO Core')
         print('File                 : {}'.format(file_name))
         delta_minutes = 12
 
-        self.random_data = random_data
+        random_data_shape = torch.Size([1, data_len])
         if random_data:
-            self.random_data_shape = torch.Size([1, random_data_shape])
-            print('Random data: True')
+            print('Random solar data: True')
 
         ## Read the h5 file
-        f = h5py.File(self.data_filepath, 'r')
+        f = h5py.File(file_name, 'r')
         # for key in self.f.keys(): print(key, f[key].shape)
 
         ## Combine the year, month, day, hour, minute lists into datetimes list
@@ -434,18 +439,27 @@ class SDOCore(PandasDataset):
         days = f['day'][:]
         hours = f['hour'][:]
         minutes = f['minute'][:]
+        latent = self.array_to_list_of_arrays(f['latent'][:])
         
-        latent = f['latent'][:]
-        ## Convert from float64 to float16 to save memory
-        data = latent.astype(np.float16)
+        datetime = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
+
+        ## Convert from float64 to float32 to save memory
+        data = pd.DataFrame(data =  {'latent': latent,
+                                    'datetime': datetime})
+        print('Rows                 : {:,}'.format(len(data)))
+        
         del latent
         
-        self.datetimes = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
-        print('Rows                 : {:,}'.format(len(datatimes)))
-
         super().__init__('SDO Core', data, 'latent', delta_minutes, date_start, date_end, 
                         normalize, rewind_minutes, date_exclusions, random_data, random_data_shape)
     
+    def array_to_list_of_arrays(self,m):
+        # For a matrix (2d numpy array), returns a list of arrays where each array is a row of the matrix.
+        ret = []
+        for row in m:
+            ret.append(row.astype(np.float32))
+        return ret
+
     def normalize_data(self, data):
         raise NotImplementedError('normalize_data not implemented')
     
@@ -633,7 +647,9 @@ class RadLab(PandasDataset):
             # remove all rows with 0 absorbed_dose_rate
             data = data[data['absorbed_dose_rate'] > 0]
         elif self.instrument == 'CRaTER-D1D2':
-            data = data
+            # Upsample to 1 minute
+            data = data.set_index('datetime').resample('1min').asfreq().reset_index()
+            data['absorbed_dose_rate'] = data['absorbed_dose_rate'].interpolate(method='linear')
         elif self.instrument == 'MSL-RAD-Surface':
             data = data
         else:
