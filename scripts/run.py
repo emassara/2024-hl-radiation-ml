@@ -950,7 +950,7 @@ def main():
     parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
     parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
     # parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context') ## Taking a different approach (i.e. passing random_data) for ablation study instead of using this flag
-    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file')
+    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck.db', help='RadLab file') #USE CORRECTED once Rutuja updates it
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--context_window', type=int, default=40, help='Context window')
@@ -1161,7 +1161,8 @@ def main():
                     model_sdo_channels = 6
                     model_context_window = args.context_window
                     model_prediction_window = args.prediction_window
-                    model = RadRecurrentWithSDO(data_dim=model_data_dim, 
+                    model = RadRecurrentWithSDO(data_dim_context=model_data_dim_context, 
+                                                data_dim_predict=model_data_dim_prediction,
                                                 lstm_dim=model_lstm_dim, 
                                                 lstm_depth=model_lstm_depth, 
                                                 dropout=model_dropout, 
@@ -1180,7 +1181,7 @@ def main():
                     model_context_window = args.context_window
                     model_prediction_window = args.prediction_window
                     model = RadRecurrentWithSDOCore(data_dim_context=model_data_dim_context, 
-                                                    data_dim_prediction=model_data_dim_prediction, 
+                                                    data_dim_predict=model_data_dim_prediction, 
                                                     lstm_dim=model_lstm_dim, 
                                                     lstm_depth=model_lstm_depth, 
                                                     dropout=model_dropout, 
@@ -1233,15 +1234,17 @@ def main():
                             context_data = data[:, :model.context_window]
 
                             # prediction window
-                            input = data[:, model.context_window:-1]
-                            target = data[-1, model.context_window+1:]
+                            input = data[:, model.context_window:-1,-1]
+                            target = data[:, model.context_window+1:,-1]
+                            input=input.unsqueeze(-1)
+                            target=target.unsqueeze(-1)
 
                             model.init(batch_size)
                             optimizer.zero_grad()
                             model.forward_context(context_sdo, context_data)
                             output = model.forward(input)
                         
-                        if isinstance(model, RadRecurrentWithSDOCore):
+                        elif isinstance(model, RadRecurrentWithSDOCore):
                             (sdo, goesxrs, biosentinel, _) = batch
                             batch_size = goesxrs.shape[0]
 
@@ -1257,8 +1260,10 @@ def main():
                             context_data = data[:, :model.context_window]
 
                             # prediction window
-                            input = data[:, model.context_window:-1]
-                            target = data[-1, model.context_window+1:]
+                            input = data[:, model.context_window:-1,-1]
+                            target = data[:, model.context_window+1:,-1]
+                            input=input.unsqueeze(-1)
+                            target=target.unsqueeze(-1)
 
                             model.init(batch_size)
                             optimizer.zero_grad()

@@ -217,7 +217,7 @@ class PandasDataset(Dataset):
         self.delta_minutes = delta_minutes
 
         self.random_data = random_data
-        if random_data:
+        if self.random_data:
             self.random_data_shape = random_data_shape
             print('Random data: True')
 
@@ -323,7 +323,7 @@ class PandasDataset(Dataset):
     def get_data(self, date):
         # if date < self.date_start or date > self.date_end:
         #     raise ValueError('Date ({}) out of range for RadLab ({}; {} - {})'.format(date, self.instrument, self.date_start, self.date_end))
-        if not random_data:
+        if not self.random_data:
             if date not in self.dates_set:
                 print('{} date not found: {}'.format(self.name, date))
                 # find the most recent date available before date, in pandas dataframe self.data
@@ -341,10 +341,9 @@ class PandasDataset(Dataset):
                 data = self.data[self.data['datetime'] == date][self.column]
                 if len(data) == 0:
                     raise RuntimeError('Should not happen')
-            print(data)
-            data = torch.tensor(data.values[0])
-            print(data)
-            sys.exit()
+
+            data = torch.tensor(data.values[0])  # TODO: check if this is OK in case of SDOCore (multivariate-time series)
+
             if self.normalize and self.name !='SDO Core':
                 data = self.normalize_data(data)
         else:
@@ -620,7 +619,7 @@ class RadLab(PandasDataset):
         dm['Lidal'] = 5
         dm['MSL-RAD-Surface'] = 17
         dm['ALTEA-Survey'] = 1
-        dm['CRaTER-D1D2'] = 60
+        dm['CRaTER-D1D2'] = 1
         dm['BPD'] = 1
         if self.instrument in dm:
             delta_minutes = dm[self.instrument]
@@ -640,7 +639,6 @@ class RadLab(PandasDataset):
         data = data.sort_values(by='timestamp')
         data['datetime'] = pd.to_datetime(data['timestamp'], unit='s', origin='unix', utc=True).dt.tz_localize(None)
         data = data.drop(columns=['timestamp'])
-
         print('Rows                 : {:,}'.format(len(data)))
 
         if self.instrument == 'BPD':

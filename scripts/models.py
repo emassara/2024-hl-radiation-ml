@@ -138,7 +138,7 @@ class RadRecurrentWithSDO(nn.Module):
         self.sdo_embedding = SDOEmbedding(channels=sdo_channels, embedding_dim=sdo_dim)
         self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim_context, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
         self.lstm_predict = nn.LSTM(input_size=data_dim_predict, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
-        self.fc1 = nn.Linear(lstm_dim, data_dim)
+        self.fc1 = nn.Linear(lstm_dim, data_dim_predict)
         self.dropout1 = nn.Dropout(dropout)
         self.hidden_context = None
         self.hidden_predict = None
@@ -153,7 +153,7 @@ class RadRecurrentWithSDO(nn.Module):
 
     def forward_context(self, sdo, data):
         # sdo has shape (batch_size, seq_len, channels, size, size)
-        # data has shape (batch_size, seq_len, self.data_dim)
+        # data has shape (batch_size, seq_len, self.data_dim_context)
         # if self.sdo_only_context:
         #     data = torch.zeros_like(data)
 
@@ -230,7 +230,7 @@ class RadRecurrentWithSDOCore(nn.Module):
         self.lstm_context = nn.LSTM(input_size=sdo_dim+data_dim_context, hidden_size=lstm_dim, num_layers=lstm_depth, batch_first=True)
         self.lstm_predict = nn.LSTM(input_size=data_dim_predict, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
 
-        self.fc1 = nn.Linear(lstm_dim, data_dim)
+        self.fc1 = nn.Linear(lstm_dim, data_dim_predict)
         self.dropout1 = nn.Dropout(dropout)
         self.hidden_context = None
         self.hidden_predict = None
