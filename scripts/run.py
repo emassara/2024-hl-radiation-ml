@@ -968,10 +968,10 @@ def main():
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
-    parser.add_argument('--date_start', type=str, default='2017-02-01T00:00:00', help='Start date') #default='2022-11-16T11:00:00'
-    parser.add_argument('--date_end', type=str, default='2017-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
-    parser.add_argument('--test_event_id', nargs='+', default=['test08'], help='Test event IDs')
-    parser.add_argument('--valid_event_id', nargs='+', default=['valid08'], help='Validation event IDs')
+    parser.add_argument('--date_start', type=str, default='2017-02-07 00:00:00', help='Start date') #default='2022-11-16T11:00:00'
+    parser.add_argument('--date_end', type=str, default='2024-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
+    parser.add_argument('--test_event_id', nargs='+', default=['test08','test09','test10','test11','test12','test13','test14','test15'], help='Test event IDs')
+    parser.add_argument('--valid_event_id', nargs='+', default=['valid08','valid09','valid10','valid11','valid12','valid13','valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
     # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
