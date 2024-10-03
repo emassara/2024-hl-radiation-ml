@@ -3,6 +3,8 @@ import pandas as pd
 # BPD                   : 2022-11-16T11:00:00 - 2024-05-14T09:15:00
 # sdoml-lite-biosentinel: 2022-11-01T00:00:00 - 2024-05-14T19:30:00
 # CRaTER-D1D2           : 2009-06-26T21:00:00 - 2024-06-19T00:00:00
+# GOES X-rays           : 2017-02-07 00:00:00 - 2024-07-28 23:59:00
+# sdoml-lite            : 
 
 events = []
 for y in range(15):
