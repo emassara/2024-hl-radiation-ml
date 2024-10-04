@@ -950,7 +950,7 @@ def main():
     parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
     parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
     # parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context') ## Taking a different approach (i.e. passing random_data) for ablation study instead of using this flag
-    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck.db', help='RadLab file') #USE CORRECTED once Rutuja updates it
+    parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file') #USE CORRECTED once Rutuja updates it
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
     parser.add_argument('--goes_sgps_file', type=str, default='goes/goes-sgps.csv', help='GOES SGPS file')
     parser.add_argument('--context_window', type=int, default=40, help='Context window')

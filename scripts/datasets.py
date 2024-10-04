@@ -229,7 +229,6 @@ class PandasDataset(Dataset):
 
         if self.name != 'SDO Core':
             self.data[column] = self.data[column].astype(np.float32)
-
             self.data.replace([np.inf, -np.inf], np.nan, inplace=True)
             self.data = self.data.dropna()
 
@@ -293,7 +292,6 @@ class PandasDataset(Dataset):
 
         print('Rows after processing: {:,}'.format(len(self.data)))
         # print('Memory usage         : {:,} bytes'.format(self.data.memory_usage(deep=True).sum()))
-
 
 
     def normalize_data(self, data):
@@ -619,7 +617,7 @@ class RadLab(PandasDataset):
         dm['Lidal'] = 5
         dm['MSL-RAD-Surface'] = 17
         dm['ALTEA-Survey'] = 1
-        dm['CRaTER-D1D2'] = 1
+        dm['CRaTER-D1D2'] = 15
         dm['BPD'] = 1
         if self.instrument in dm:
             delta_minutes = dm[self.instrument]
@@ -640,14 +638,17 @@ class RadLab(PandasDataset):
         data['datetime'] = pd.to_datetime(data['timestamp'], unit='s', origin='unix', utc=True).dt.tz_localize(None)
         data = data.drop(columns=['timestamp'])
         print('Rows                 : {:,}'.format(len(data)))
-
+        data = data.dropna() ## erase once we have updated corrected db
+        
         if self.instrument == 'BPD':
             # remove all rows with 0 absorbed_dose_rate
             data = data[data['absorbed_dose_rate'] > 0]
         elif self.instrument == 'CRaTER-D1D2':
-            # Upsample to 1 minute
-            data = data.set_index('datetime').resample('1min').asfreq().reset_index()
+            # Upsample to 15 minute
+            data = data.set_index('datetime').resample('15min').asfreq().reset_index()
             data['absorbed_dose_rate'] = data['absorbed_dose_rate'].interpolate(method='linear')
+            print('Rows after upsampling: {:,}'.format(len(data)))
+            data.loc[:,'instrument_id']='CRaTER-D1D2'
         elif self.instrument == 'MSL-RAD-Surface':
             data = data
         else:
