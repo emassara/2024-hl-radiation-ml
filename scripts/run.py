@@ -86,7 +86,8 @@ def save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, f
             'valid_losses': valid_losses,
             'model_context_window': model.context_window,
             'model_prediction_window': model.prediction_window,
-            'model_data_dim': model.data_dim,
+            'model_data_dim_context': model.data_dim_context,
+            'model_data_dim_prediction': model.data_dim_predict,
             'model_lstm_dim': model.lstm_dim,
             'model_lstm_depth': model.lstm_depth,
             'model_dropout': model.dropout,
@@ -111,13 +112,16 @@ def load_model(file_name, device):
     elif checkpoint['model'] == 'RadRecurrentWithSDO':
         model_context_window = checkpoint['model_context_window']
         model_prediction_window = checkpoint['model_prediction_window']
-        model_data_dim = checkpoint['model_data_dim']
+        model_data_dim_context = checkpoint['model_data_dim_context']
+        model_data_dim_prediction = checkpoint['model_data_dim_prediction']
         model_lstm_dim = checkpoint['model_lstm_dim']
         model_lstm_depth = checkpoint['model_lstm_depth']
         model_dropout = checkpoint['model_dropout']
         model_sdo_channels = checkpoint['model_sdo_channels']
         model_sdo_dim = checkpoint['model_sdo_dim']
-        model = RadRecurrentWithSDO(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, context_window=model_context_window, prediction_window=model_prediction_window, sdo_channels=model_sdo_channels, sdo_dim=model_sdo_dim)
+        model = RadRecurrentWithSDO(data_dim_context=model_data_dim_context, 
+                                    data_dim_predict=model_data_dim_prediction,
+                                    lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, context_window=model_context_window, prediction_window=model_prediction_window, sdo_channels=model_sdo_channels, sdo_dim=model_sdo_dim)
     else:
         raise ValueError('Unknown model type: {}'.format(checkpoint['model']))
 
@@ -1121,7 +1125,7 @@ def main():
 
             train_loader = DataLoader(dataset_sequences_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
             valid_loader = DataLoader(dataset_sequences_valid, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-            test_loader = DataLoader(dataset_sequences_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+            #test_loader = DataLoader(dataset_sequences_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
             ## Creating model...            
             # check if a previous training run exists in the target directory, if so, find the latest model file saved, resume training from there by loading the model instead of creating a new one
@@ -1209,7 +1213,7 @@ def main():
             ## Open file for saving epoch-wise losses
             epoch_losses_filepath = '{}/epoch_losses.txt'.format(main_study_dir+"/train/loss", epoch_start+1)
             epoch_losses_file = open(epoch_losses_filepath, 'a')
-            epoch_losses_file.write('Epoch TrainLoss ValidLoss\n')
+            ###epoch_losses_file.write('Epoch TrainLoss ValidLoss\n')
             for epoch in range(epoch_start, args.epochs):
                 epoch_start = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} started {}'.format(epoch+1, args.epochs, epoch_start))
@@ -1311,7 +1315,7 @@ def main():
                         pbar.update(1)
 
                         iteration += 1
-
+                
                 print('*** Validation')
                 with torch.no_grad():
                     valid_loss = 0.
@@ -1334,12 +1338,40 @@ def main():
                                 context_sdo = sdo[:, :model.context_window]
                                 context_data = data[:, :model.context_window]
 
-                                input = data[:, model.context_window:-1]
-                                target = data[:, model.context_window+1:]
+                                input = data[:, model.context_window:-1,-1]
+                                target = data[:, model.context_window+1:,-1]
+                                input=input.unsqueeze(-1)
+                                target=target.unsqueeze(-1)
 
                                 model.init(batch_size)
                                 model.forward_context(context_sdo, context_data)
                                 output = model.forward(input)
+
+                            elif isinstance(model, RadRecurrentWithSDOCore):
+                                (sdo, goesxrs, biosentinel, _) = batch
+                                batch_size = goesxrs.shape[0]
+
+                                sdo = sdo.to(device)
+                                goesxrs = goesxrs.to(device)
+                                biosentinel = biosentinel.to(device)
+                                goesxrs = goesxrs.unsqueeze(-1)
+                                biosentinel = biosentinel.unsqueeze(-1)
+                                data = torch.cat([goesxrs, biosentinel], dim=2)
+
+                                # context window
+                                context_sdo = sdo[:, :model.context_window]
+                                context_data = data[:, :model.context_window]
+
+                                # prediction window
+                                input = data[:, model.context_window:-1,-1]
+                                target = data[:, model.context_window+1:,-1]
+                                input=input.unsqueeze(-1)
+                                target=target.unsqueeze(-1)
+
+                                model.init(batch_size)
+                                model.forward_context(context_sdo, context_data)
+                                output = model.forward(input)
+
                             elif isinstance(model, RadRecurrent):
                                 (goesxrs, biosentinel, _) = batch
                                 batch_size = goesxrs.shape[0]

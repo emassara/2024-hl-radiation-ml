@@ -122,11 +122,11 @@ class SDOMLlite(Dataset):
         print('Frames dropped  : {:,}'.format(total_steps - len(self.dates)))
 
 
-    @lru_cache(maxsize=100000)
+    @lru_cache(maxsize=128) #100000)
     def prefix_to_date(self, prefix):
         return datetime.datetime.strptime(prefix, '%Y/%m/%d/%H%M')
     
-    @lru_cache(maxsize=100000)
+    @lru_cache(maxsize=128) #100000)
     def date_to_prefix(self, date):
         return date.strftime('%Y/%m/%d/%H%M')
 
@@ -638,13 +638,13 @@ class RadLab(PandasDataset):
         data['datetime'] = pd.to_datetime(data['timestamp'], unit='s', origin='unix', utc=True).dt.tz_localize(None)
         data = data.drop(columns=['timestamp'])
         print('Rows                 : {:,}'.format(len(data)))
-        data = data.dropna() ## erase once we have updated corrected db
         
         if self.instrument == 'BPD':
             # remove all rows with 0 absorbed_dose_rate
             data = data[data['absorbed_dose_rate'] > 0]
         elif self.instrument == 'CRaTER-D1D2':
             # Upsample to 15 minute
+            data = data.dropna() ## erase once we have updated corrected db
             data = data.set_index('datetime').resample('15min').asfreq().reset_index()
             data['absorbed_dose_rate'] = data['absorbed_dose_rate'].interpolate(method='linear')
             print('Rows after upsampling: {:,}'.format(len(data)))
