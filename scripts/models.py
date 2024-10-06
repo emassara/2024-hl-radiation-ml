@@ -199,7 +199,8 @@ class RadRecurrentWithSDO(nn.Module):
         h, c = self.hidden_context
         self.hidden_predict = (h.repeat(1, num_samples, 1), c.repeat(1, num_samples, 1))
 
-        x = context_data[:, -1, :].unsqueeze(1) # prepend the prediction values with the last context input
+        x = context_data[:, -1, -1].unsqueeze(1) # prepend the prediction values with the last context input
+        x = x.unsqueeze(2)
         x = x.repeat(num_samples, 1, 1)
         prediction = [x]
         for _ in range(prediction_window):
