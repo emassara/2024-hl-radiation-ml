@@ -203,7 +203,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     print('Saving test plot: {}'.format(file_name))
     fig, axs = plt.subplot_mosaic([['biosentinel'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1])
 
-    num_samples = goesxrs_predictions.shape[0]
+    num_samples = biosentinel_predictions.shape[0]
 
     ylims = {}
     hours_locator = matplotlib.dates.HourLocator(interval=1)
@@ -316,7 +316,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     return ylims
 
 
-def run_test(model, date_start, date_end, file_prefix, title, args):
+def run_test(model, main_study_dir, date_start, date_end, file_prefix, title, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     # data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
@@ -399,7 +399,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
     biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
-    file_name = os.path.join(args.target_dir, file_prefix)
+    file_name = main_study_dir + '/test/plots/' + file_prefix
     test_file = file_name + '.csv'
     save_test_file(prediction_dates, #goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, 
                     biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
@@ -412,7 +412,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     return ylims
 
 
-def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims, args):
+def run_test_video(model, main_study_dir, date_start, date_end, file_prefix, title_prefix, ylims, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
     data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
@@ -775,7 +775,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         plt.tight_layout(rect=[0, 0, 1, 1.005])
         anim = animation.FuncAnimation(fig, run, interval=300, frames=num_frames)
         
-        file_name = os.path.join(args.target_dir, file_prefix)
+        file_name = main_study_dir + '/test/plots/' + file_prefix
         file_name_mp4 = file_name + '.mp4'
         print('Saving video to {}'.format(file_name_mp4))
         writer_mp4 = animation.FFMpegWriter(fps=15)
@@ -1476,8 +1476,8 @@ def main():
 
             for date_start, date_end, file_prefix, title in tests_to_run:
                 save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
-                #plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
-                #run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
+                #plot_ylims = run_test(model, main_study_dir, date_start, date_end, file_prefix, title, args)
+                #run_test_video(model, main_study_dir, date_start, date_end, file_prefix, title, plot_ylims, args)
 
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))
