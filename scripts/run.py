@@ -1124,7 +1124,7 @@ def main():
             model_files = []
             for entry in os.scandir('{}/saved_model'.format(main_study_dir)):
                 if entry.name.startswith('epoch'):
-                    model_files.append(entry.name)
+                    model_files.append('{}/saved_model/{}'.format(main_study_dir,entry.name))
             if len(model_files) > 0:
                 model_files.sort()
                 model_file = model_files[-1]
