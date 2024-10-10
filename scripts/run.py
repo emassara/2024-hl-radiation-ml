@@ -909,7 +909,7 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
                 raise ValueError('Unknown model type: {}'.format(model))
 
             #goesxrs_predictions = prediction_batch[:, :, 0]
-            biosentinel_predictions = prediction_batch[:, :, 1]
+            biosentinel_predictions = prediction_batch[:, :, 0]
             #goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
             biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
@@ -1398,10 +1398,12 @@ def main():
                     valid_losses.append((iteration, valid_loss))
                 
                 
-                ## Append the epoch-wise losses to the file
+                ## Save epoch-wise losses to the file
                 mean_train_loss = np.mean([loss for _, loss in train_losses])
+                epoch_losses_filepath = '{}/epoch_losses.txt'.format(main_study_dir+"/train/loss")
+                epoch_losses_file = open(epoch_losses_filepath, 'a')
                 epoch_losses_file.write('%d %.5e %.5e\n'%(epoch, mean_train_loss, valid_loss))
-                
+                epoch_losses_file.close()
 
                 # Save model
                 model_file = '{}/epoch-{:03d}-model.pth'.format(main_study_dir+"/saved_model", epoch+1)
@@ -1444,6 +1446,10 @@ def main():
         if args.mode == 'test':
             print('\n*** Testing mode\n')
 
+            dir_model_epoch = args.model_file.split("/")[-1].split(".")[0]
+            dir_test_plot = main_study_dir+'/'+'test/plots/'+dir_model_epoch
+            os.makedirs(dir_test_plot, exist_ok=True)
+            
             model, _, _, _, _, _ = load_model(args.model_file, device)
             model.train() # set to train mode to use MC dropout
             model.to(device)
@@ -1475,9 +1481,9 @@ def main():
 
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
-                #plot_ylims = run_test(model, main_study_dir, date_start, date_end, file_prefix, title, args)
-                #run_test_video(model, main_study_dir, date_start, date_end, file_prefix, title, plot_ylims, args)
+                #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
+                plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
+                run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
 
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))

@@ -1,4 +1,3 @@
-### USE GUNES EVENT CATALOG - plot test event ###
 import argparse
 import sys
 import pprint
@@ -22,7 +21,7 @@ import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
-from events import EventCatalog
+from events_months import EventCatalog
 
 matplotlib.use('Agg')
 
@@ -101,7 +100,7 @@ def save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, f
 
 
 def load_model(file_name, device):
-    checkpoint = torch.load(file_name, weights_only=False,map_location=torch.device('cpu'))
+    checkpoint = torch.load(file_name, weights_only=False)
     if checkpoint['model'] == 'RadRecurrent':    
         model_context_window = checkpoint['model_context_window']
         model_prediction_window = checkpoint['model_prediction_window']
@@ -147,7 +146,7 @@ def seed(seed=None):
     torch.manual_seed(seed)
 
 
-def save_test_file(prediction_dates, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name):
+def save_test_file(prediction_dates, goesxrs_predictions, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name):
     print('Saving test results: {}'.format(file_name))
 
     # goessgps10_prediction_mean = np.mean(goessgps10_predictions, axis=0)
@@ -156,22 +155,22 @@ def save_test_file(prediction_dates, biosentinel_predictions, goesxrs_ground_tru
     # goessgps100_prediction_mean = np.mean(goessgps100_predictions, axis=0)
     # goessgps100_prediction_std = np.std(goessgps100_predictions, axis=0)
 
-    # goesxrs_prediction_mean = np.mean(goesxrs_predictions, axis=0)
-    # goesxrs_prediction_std = np.std(goesxrs_predictions, axis=0)
+    goesxrs_prediction_mean = np.mean(goesxrs_predictions, axis=0)
+    goesxrs_prediction_std = np.std(goesxrs_predictions, axis=0)
 
     biosentinel_prediction_mean = np.mean(biosentinel_predictions, axis=0)
     biosentinel_prediction_std = np.std(biosentinel_predictions, axis=0)
 
     with open(file_name, 'w') as f:
-        f.write('date,biosentinel_prediction_mean,biosentinel_prediction_std,goesxrs_ground_truth,biosentinel_ground_truth\n')
+        f.write('date,goesxrs_prediction_mean,goesxrs_prediction_std, biosentinel_prediction_mean,biosentinel_prediction_std,goesxrs_ground_truth,biosentinel_ground_truth\n')
         for i in range(len(prediction_dates)):
             date = prediction_dates[i]
             # goessgps10_prediction_mean_value = goessgps10_prediction_mean[i]
             # goessgps10_prediction_std_value = goessgps10_prediction_std[i]
             # goessgps100_prediction_mean_value = goessgps100_prediction_mean[i]
             # goessgps100_prediction_std_value = goessgps100_prediction_std[i]
-            # goesxrs_prediction_mean_value = goesxrs_prediction_mean[i]
-            # goesxrs_prediction_std_value = goesxrs_prediction_std[i]
+            goesxrs_prediction_mean_value = goesxrs_prediction_mean[i]
+            goesxrs_prediction_std_value = goesxrs_prediction_std[i]
             biosentinel_prediction_mean_value = biosentinel_prediction_mean[i]
             biosentinel_prediction_std_value = biosentinel_prediction_std[i]
 
@@ -195,12 +194,13 @@ def save_test_file(prediction_dates, biosentinel_predictions, goesxrs_ground_tru
             else:
                 biosentinel_ground_truth_value = float('nan')
 
-            f.write('{},{},{},{},{}\n'.format(date, #goessgps10_prediction_mean_value, goessgps10_prediction_std_value, goessgps100_prediction_mean_value, goessgps100_prediction_std_value, goesxrs_prediction_mean_value, goesxrs_prediction_std_value, 
+            f.write('{},{},{},{},{}\n'.format(date, #goessgps10_prediction_mean_value, goessgps10_prediction_std_value, goessgps100_prediction_mean_value, goessgps100_prediction_std_value, 
+                                              goesxrs_prediction_mean_value, goesxrs_prediction_std_value, 
                                             biosentinel_prediction_mean_value, biosentinel_prediction_std_value, #goessgps10_ground_truth_value, goessgps100_ground_truth_value, 
                                             goesxrs_ground_truth_value, biosentinel_ground_truth_value))
             
 
-def save_test_plot(context_dates, prediction_dates, training_prediction_window_end, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name, title=None):
+def save_test_plot(context_dates, prediction_dates, training_prediction_window_end, goesxrs_predictions, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name, title=None):
     print('Saving test plot: {}'.format(file_name))
     fig, axs = plt.subplot_mosaic([['biosentinel'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1])
 
@@ -290,10 +290,10 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     ax.set_ylabel('X-ray flux\n[W/m^2]')
     ax.yaxis.set_label_position("right")
     ax.plot(goesxrs_ground_truth_dates, goesxrs_ground_truth_values, color=colors['goesxrs'], label='Ground truth', alpha=0.75)
-    # ax.plot(prediction_dates, np.mean(goesxrs_predictions, axis=0), color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (mean)')
-    # for i in range(num_samples):
-    #     label = 'Prediction (samples)' if i == 0 else None
-    #     ax.plot(prediction_dates, goesxrs_predictions[i], label=label, color=colors['prediction'], alpha=prediction_alpha)
+    ax.plot(prediction_dates, np.mean(goesxrs_predictions, axis=0), color=colors['prediction'], alpha=prediction_mean_alpha, label='Prediction (mean)')
+    for i in range(num_samples):
+        label = 'Prediction (samples)' if i == 0 else None
+        ax.plot(prediction_dates, goesxrs_predictions[i], label=label, color=colors['prediction'], alpha=prediction_alpha)
     ax.xaxis.set_minor_locator(hours_locator)
     ax.grid(color='#f0f0f0', zorder=0, which='minor', axis='x')
     ax.grid(color='lightgray', zorder=0, which='major')
@@ -338,7 +338,7 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
         context_sequence = dataset_sequences[0]
         context_dates = [datetime.datetime.fromisoformat(d) for d in context_sequence[3]]
     elif isinstance(model, RadRecurrent):
-        dataset_sequences = Sequences([dataset_goes_sgps10, dataset_goes_sgps100, dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
+        dataset_sequences = Sequences([dataset_goes_xrs, dataset_rad], delta_minutes=args.delta_minutes, sequence_length=model.context_window)
         if len(dataset_sequences) == 0:
             return
         context_sequence = dataset_sequences[0]
@@ -354,13 +354,13 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
     prediction_window = int((date_end - context_end).total_seconds() / (args.delta_minutes * 60))
 
     if isinstance(model, RadRecurrent):
-        context_goessgps10 = context_sequence[0][:model.context_window].unsqueeze(1).to(args.device)
-        context_goessgps100 = context_sequence[1][:model.context_window].unsqueeze(1).to(args.device)
-        context_goesxrs = context_sequence[2][:model.context_window].unsqueeze(1).to(args.device)
-        context_rad = context_sequence[3][:model.context_window].unsqueeze(1).to(args.device)
-        context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
+        # context_goessgps10 = context_sequence[0][:model.context_window].unsqueeze(1).to(args.device)
+        # context_goessgps100 = context_sequence[1][:model.context_window].unsqueeze(1).to(args.device)
+        context_goesxrs = context_sequence[0][:model.context_window].unsqueeze(1).to(args.device)
+        context_rad = context_sequence[1][:model.context_window].unsqueeze(1).to(args.device)
+        context = torch.cat([context_goesxrs, context_rad], dim=1)
         context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
-        prediction_batch = model.predict(context_batch, prediction_window).detach()
+        prediction_batch = model.predict_rad_xray(context_batch, prediction_window).detach()
     elif isinstance(model, RadRecurrentWithSDO):
         context_sdo = context_sequence[0][:model.context_window].to(args.device)
         context_sdo_batch = context_sdo.unsqueeze(0)
@@ -370,7 +370,7 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
         context_rad = context_sequence[2][:model.context_window].unsqueeze(1).to(args.device)
         context_data = torch.cat([context_goesxrs, context_rad], dim=1)
         context_data_batch = context_data.unsqueeze(0)
-        prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
+        prediction_batch = model.predict_rad_xray(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
     else:
         raise ValueError('Unknown model type: {}'.format(model))
 
@@ -380,12 +380,12 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
 
     # goessgps10_predictions = prediction_batch[:, :, 0]
     # goessgps100_predictions = prediction_batch[:, :, 1]
-    # goesxrs_predictions = prediction_batch[:, :, 2]
-    biosentinel_predictions = prediction_batch[:, :, 0]
+    goesxrs_predictions = prediction_batch[:, :, 0]
+    biosentinel_predictions = prediction_batch[:, :, 1]
 
     # goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
     # goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
-    # goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
+    goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
     biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
 
     # predict end
@@ -667,7 +667,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
                 context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_data = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
-                prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
+                prediction_batch = model.predict_rad_xray(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
             elif isinstance(model, RadRecurrent):
                 context_goessgps10 = full_sequence[0][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goessgps100 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
@@ -675,14 +675,14 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
                 context_rad = full_sequence[3][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context = torch.cat([context_goessgps10, context_goessgps100, context_goesxrs, context_rad], dim=1)
                 context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
-                prediction_batch = model.predict(context_batch, prediction_window).detach()
+                prediction_batch = model.predict_rad_xray(context_batch, prediction_window).detach()
             else:
                 raise ValueError('Unknown model type: {}'.format(model))
 
             # goessgps10_predictions = prediction_batch[:, :, 0]
             # goessgps100_predictions = prediction_batch[:, :, 1]
-            # goesxrs_predictions = prediction_batch[:, :, 0]
-            biosentinel_predictions = prediction_batch[:, :, 0]
+            goesxrs_predictions = prediction_batch[:, :, 0]
+            biosentinel_predictions = prediction_batch[:, :, 1]
             # goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
             # goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
             # goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
@@ -727,8 +727,8 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             # goessgps10_predictions_secondary = goessgps10_predictions[:, model.prediction_window:]
             # goessgps100_predictions_primary = goessgps100_predictions[:, :model.prediction_window+1]
             # goessgps100_predictions_secondary = goessgps100_predictions[:, model.prediction_window:]
-            # goesxrs_predictions_primary = goesxrs_predictions[:, :model.prediction_window+1]
-            # goesxrs_predictions_secondary = goesxrs_predictions[:, model.prediction_window:]
+            goesxrs_predictions_primary = goesxrs_predictions[:, :model.prediction_window+1]
+            goesxrs_predictions_secondary = goesxrs_predictions[:, model.prediction_window:]
 
             ims['biosentinel_prediction_mean'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0))
             # ims['goessgps10_prediction_mean'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0))
@@ -867,6 +867,7 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
 
     current_now_day = full_dates[model.context_window - 1]
     biosentinel_p = []
+    goes_xray_p = []
     dates_p = []
     with tqdm(total=num_frames) as pbar:
         for i in range(num_frames):
@@ -883,6 +884,11 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
                 biosentinel_p = np.array(biosentinel_p)
                 np.save(file_rad,biosentinel_p)
 
+                file_xray = main_study_dir+'/test/saved_predictions/{}-xray_pred-{}-{}wprediction.npy'.format(file_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                print('Saving into...',file_xray)
+                goes_xray_p = np.array(goes_xray_p)
+                np.save(file_xray,goes_xray_p)
+
                 file_dates = main_study_dir+'/test/saved_predictions/{}-dates-{}-{}wprediction.npy'.format(file_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_dates)
                 dates_p = np.array(dates_p)
@@ -890,6 +896,7 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
 
                 dates_p = []
                 biosentinel_p = []
+                goes_xray_p = []
                 current_now_day = full_dates[prediction_start]
 
             if isinstance(model, RadRecurrentWithSDO):
@@ -899,19 +906,19 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
                 context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_data = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
-                prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
+                prediction_batch = model.predict_rad_xray(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
             elif isinstance(model, RadRecurrent):
                 context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_batch = context.unsqueeze(0).repeat(args.num_samples, 1, 1)
-                prediction_batch = model.predict(context_batch, prediction_window).detach()
+                prediction_batch = model.predict_rad_xray(context_batch, prediction_window).detach()
             else:
                 raise ValueError('Unknown model type: {}'.format(model))
 
-            #goesxrs_predictions = prediction_batch[:, :, 0]
-            biosentinel_predictions = prediction_batch[:, :, 0]
-            #goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
+            goesxrs_predictions = prediction_batch[:, :, 0]
+            biosentinel_predictions = prediction_batch[:, :, 1]
+            goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
             biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
 
@@ -965,12 +972,12 @@ def main():
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
-    parser.add_argument('--date_start', type=str, default='2017-02-07T00:00:00', help='Start date') #default='2022-11-16T11:00:00'
-    parser.add_argument('--date_end', type=str, default='2024-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
-    ###parser.add_argument('--test_event_id', nargs='+', default=['test08','test09','test10','test11','test12','test13','test14','test15'], help='Test event IDs')
-    ###parser.add_argument('--valid_event_id', nargs='+', default=['valid08','valid09','valid10','valid11','valid12','valid13','valid14','valid15'], help='Validation event IDs')
+    parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
+    parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
+    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    parser.add_argument('--test_event_id', nargs='+', default=['crater54','crater55'], help='Test event IDs')
+    # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
 
     parser.add_argument('--model_file', type=str, help='Model file')
@@ -987,13 +994,13 @@ def main():
 
     ## Create the ablation study ids
     if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
-        study_id = "study--solar-rad-xray_to_rad" ## This is the "max" study
+        study_id = "study--solar-rad-xray_to_rad-xray" ## This is the "max" study
     elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
-        study_id = "study--solar-xray_to_rad"
+        study_id = "study--solar-xray_to_rad-xray"
     elif not args.sdo_random_data and args.xray_random_data and args.rad_random_data:
-        study_id = "study--solar_to_rad"
+        study_id = "study--solar_to_rad-xray"
     elif args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
-        study_id = "study--xray_to_rad"
+        study_id = "study--xray_to_rad-xray"
     
     ## Create the study directory with the folder structure as decided: /home/username/2024-hl-radiation-ml/results/solar-inst[SDOCORE]/rad-inst[CRaTER]/study–solar-rad-xray_to_rad
     main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}/{args.date_start}-{args.date_end}"
@@ -1122,7 +1129,10 @@ def main():
 
             ## Creating model...            
             # check if a previous training run exists in the target directory, if so, find the latest model file saved, resume training from there by loading the model instead of creating a new one
-            model_files = glob.glob(f'{main_study_dir}/saved_model/epoch-*-model.pth')
+            model_files = []
+            for entry in os.scandir('{}/saved_model'.format(main_study_dir)):
+                if entry.name.startswith('epoch'):
+                    model_files.append('{}/saved_model/{}'.format(main_study_dir,entry.name))
             if len(model_files) > 0:
                 model_files.sort()
                 model_file = model_files[-1]
@@ -1150,7 +1160,7 @@ def main():
                     model = RadRecurrent(data_dim=model_data_dim, lstm_dim=model_lstm_dim, lstm_depth=model_lstm_depth, dropout=model_dropout, context_window=model_context_window, prediction_window=model_prediction_window)
                 elif args.model_type == 'RadRecurrentWithSDO':
                     model_data_dim_context = 2
-                    model_data_dim_prediction = 1
+                    model_data_dim_prediction = 2
                     model_lstm_dim = 1024
                     model_lstm_depth = args.lstm_depth
                     model_dropout = 0.2
@@ -1171,7 +1181,7 @@ def main():
                                             )
                 elif args.model_type == 'RadRecurrentWithSDOCore':
                     model_data_dim_context = 2
-                    model_data_dim_prediction = 1
+                    model_data_dim_prediction = 2
                     model_lstm_dim = 1024
                     model_lstm_depth = args.lstm_depth
                     model_dropout = 0.2 
@@ -1231,10 +1241,8 @@ def main():
                             context_data = data[:, :model.context_window]
 
                             # prediction window
-                            input = data[:, model.context_window:-1,-1]
-                            target = data[:, model.context_window+1:,-1]
-                            input=input.unsqueeze(-1)
-                            target=target.unsqueeze(-1)
+                            input = data[:, model.context_window:-1]
+                            target = data[:, model.context_window+1:]
 
                             model.init(batch_size)
                             optimizer.zero_grad()
@@ -1257,10 +1265,8 @@ def main():
                             context_data = data[:, :model.context_window]
 
                             # prediction window
-                            input = data[:, model.context_window:-1,-1]
-                            target = data[:, model.context_window+1:,-1]
-                            input=input.unsqueeze(-1)
-                            target=target.unsqueeze(-1)
+                            input = data[:, model.context_window:-1]
+                            target = data[:, model.context_window+1:]
 
                             model.init(batch_size)
                             optimizer.zero_grad()
@@ -1331,10 +1337,8 @@ def main():
                                 context_sdo = sdo[:, :model.context_window]
                                 context_data = data[:, :model.context_window]
 
-                                input = data[:, model.context_window:-1,-1]
-                                target = data[:, model.context_window+1:,-1]
-                                input=input.unsqueeze(-1)
-                                target=target.unsqueeze(-1)
+                                input = data[:, model.context_window:-1]
+                                target = data[:, model.context_window+1:]
 
                                 model.init(batch_size)
                                 model.forward_context(context_sdo, context_data)
@@ -1356,10 +1360,8 @@ def main():
                                 context_data = data[:, :model.context_window]
 
                                 # prediction window
-                                input = data[:, model.context_window:-1,-1]
-                                target = data[:, model.context_window+1:,-1]
-                                input=input.unsqueeze(-1)
-                                target=target.unsqueeze(-1)
+                                input = data[:, model.context_window:-1]
+                                target = data[:, model.context_window+1:]
 
                                 model.init(batch_size)
                                 model.forward_context(context_sdo, context_data)
@@ -1396,11 +1398,13 @@ def main():
                     valid_losses.append((iteration, valid_loss))
                 
                 
-                ## Append the epoch-wise losses to the file
+                ## Save epoch-wise losses to the file
                 mean_train_loss = np.mean([loss for _, loss in train_losses])
+                epoch_losses_filepath = '{}/epoch_losses.txt'.format(main_study_dir+"/train/loss")
+                epoch_losses_file = open(epoch_losses_filepath, 'a')
                 epoch_losses_file.write('%d %.5e %.5e\n'%(epoch, mean_train_loss, valid_loss))
+                epoch_losses_file.close()
                 
-
                 # Save model
                 model_file = '{}/epoch-{:03d}-model.pth'.format(main_study_dir+"/saved_model", epoch+1)
                 save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, model_file)
@@ -1457,7 +1461,7 @@ def main():
                 for event_id in args.test_event_id:
                     if event_id not in EventCatalog:
                         raise ValueError('Event ID not found in events: {}'.format(event_id))
-                    date_start, date_end, _ = EventCatalog[event_id]
+                    date_start, date_end = EventCatalog[event_id]
                     print('\nEvent ID: {}'.format(event_id))
 
                     date_start = datetime.datetime.fromisoformat(date_start)
@@ -1480,7 +1484,7 @@ def main():
                 #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
                 plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
                 run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
-                
+
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))
         print('Duration: {}'.format(datetime.datetime.now() - start_time))
