@@ -101,7 +101,7 @@ def save_model(model, optimizer, epoch, iteration, train_losses, valid_losses, f
 
 
 def load_model(file_name, device):
-    checkpoint = torch.load(file_name, weights_only=False)
+    checkpoint = torch.load(file_name, weights_only=False,map_location=torch.device('cpu'))
     if checkpoint['model'] == 'RadRecurrent':    
         model_context_window = checkpoint['model_context_window']
         model_prediction_window = checkpoint['model_prediction_window']
@@ -204,7 +204,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     print('Saving test plot: {}'.format(file_name))
     fig, axs = plt.subplot_mosaic([['biosentinel'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1])
 
-    num_samples = goesxrs_predictions.shape[0]
+    num_samples = biosentinel_predictions.shape[0]
 
     ylims = {}
     hours_locator = matplotlib.dates.HourLocator(interval=1)
@@ -317,7 +317,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     return ylims
 
 
-def run_test(model, date_start, date_end, file_prefix, title, args):
+def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     # data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
@@ -400,7 +400,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
     biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
-    file_name = os.path.join(args.target_dir, file_prefix)
+    file_name = os.path.join(dir_test_plot, file_prefix)
     test_file = file_name + '.csv'
     save_test_file(prediction_dates, #goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, 
                     biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
@@ -413,7 +413,7 @@ def run_test(model, date_start, date_end, file_prefix, title, args):
     return ylims
 
 
-def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims, args):
+def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title_prefix, ylims, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
     data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
@@ -776,7 +776,7 @@ def run_test_video(model, date_start, date_end, file_prefix, title_prefix, ylims
         plt.tight_layout(rect=[0, 0, 1, 1.005])
         anim = animation.FuncAnimation(fig, run, interval=300, frames=num_frames)
         
-        file_name = os.path.join(args.target_dir, file_prefix)
+        file_name = os.path.join(dir_test_plot, file_prefix)
         file_name_mp4 = file_name + '.mp4'
         print('Saving video to {}'.format(file_name_mp4))
         writer_mp4 = animation.FFMpegWriter(fps=15)
@@ -910,7 +910,7 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
                 raise ValueError('Unknown model type: {}'.format(model))
 
             #goesxrs_predictions = prediction_batch[:, :, 0]
-            biosentinel_predictions = prediction_batch[:, :, 1]
+            biosentinel_predictions = prediction_batch[:, :, 0]
             #goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
             biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
@@ -965,12 +965,12 @@ def main():
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
-    parser.add_argument('--date_start', type=str, default='2017-02-07 00:00:00', help='Start date') #default='2022-11-16T11:00:00'
+    parser.add_argument('--date_start', type=str, default='2017-02-07T00:00:00', help='Start date') #default='2022-11-16T11:00:00'
     parser.add_argument('--date_end', type=str, default='2024-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
     ###parser.add_argument('--test_event_id', nargs='+', default=['test08','test09','test10','test11','test12','test13','test14','test15'], help='Test event IDs')
     ###parser.add_argument('--valid_event_id', nargs='+', default=['valid08','valid09','valid10','valid11','valid12','valid13','valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    parser.add_argument('--test_event_id', nargs='+', default=['crater68','crater69'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['crater54','crater55'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
 
     parser.add_argument('--model_file', type=str, help='Model file')
@@ -1442,6 +1442,10 @@ def main():
         if args.mode == 'test':
             print('\n*** Testing mode\n')
 
+            dir_model_epoch = args.model_file.split("/")[-1].split(".")[0]
+            dir_test_plot = main_study_dir+'/'+'test/plots/'+dir_model_epoch
+            os.makedirs(dir_test_plot, exist_ok=True)
+            
             model, _, _, _, _, _ = load_model(args.model_file, device)
             model.train() # set to train mode to use MC dropout
             model.to(device)
@@ -1473,10 +1477,10 @@ def main():
 
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
-                plot_ylims = run_test(model, date_start, date_end, file_prefix, title, args)
-                run_test_video(model, date_start, date_end, file_prefix, title, plot_ylims, args)
-
+                #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
+                plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
+                run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
+                
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))
         print('Duration: {}'.format(datetime.datetime.now() - start_time))
