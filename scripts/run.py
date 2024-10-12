@@ -941,7 +941,7 @@ def main():
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
     #parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
-    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER-D1D2', help='Radiation instrument')
+    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2','BPD'], default='CRaTER-D1D2', help='Radiation instrument')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
     parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
     parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
@@ -964,10 +964,10 @@ def main():
     parser.add_argument('--lstm_depth', type=int, default=2, help='LSTM depth')
     parser.add_argument('--model_type', type=str, choices=['RadRecurrent', 'RadRecurrentWithSDO','RadRecurrentWithSDOCore'], default='RadRecurrentWithSDO', help='Model type')
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
-    parser.add_argument('--date_start', type=str, default='2017-02-07T00:00:00', help='Start date') #default='2022-11-16T11:00:00'
-    parser.add_argument('--date_end', type=str, default='2024-05-31T23:59:59', help='End date')     #default='2024-05-14T09:15:00'
-    parser.add_argument('--test_event_id', nargs='+', default=['test08','test09','test10','test11','test12','test13','test14','test15'], help='Test event IDs')
-    parser.add_argument('--valid_event_id', nargs='+', default=['valid08','valid09','valid10','valid11','valid12','valid13','valid14','valid15'], help='Validation event IDs')
+    parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
+    parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
+    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
     # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
@@ -1205,10 +1205,6 @@ def main():
             num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print('\nNumber of parameters: {:,}\n'.format(num_params))
 
-            ## Open file for saving epoch-wise losses
-            epoch_losses_filepath = '{}/epoch_losses.txt'.format(main_study_dir+"/train/loss", epoch_start+1)
-            epoch_losses_file = open(epoch_losses_filepath, 'a')
-            ###epoch_losses_file.write('Epoch TrainLoss ValidLoss\n')
             for epoch in range(epoch_start, args.epochs):
                 epoch_start = datetime.datetime.now()
                 print('\n*** Epoch {:,}/{:,} started {}'.format(epoch+1, args.epochs, epoch_start))
