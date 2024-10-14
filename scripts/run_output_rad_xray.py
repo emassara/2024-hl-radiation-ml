@@ -1459,7 +1459,7 @@ def main():
 
             tests_to_run = []
             if args.test_event_id is not None:
-                print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
+                #print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
 
                 for event_id in args.test_event_id:
                     if event_id in EventCatalog:
@@ -1469,22 +1469,41 @@ def main():
                         date_start, date_end, _ = EventCatalogTest[event_id]
                         print('\nEvent ID: {}'.format(event_id))
                     else:
-                        raise ValueError('Event ID not found in events: {}'.format(event_id))
+                        print('Event ID not found in events: {}'.format(event_id))
+                        continue
                     date_start = datetime.datetime.fromisoformat(date_start)
                     date_end = datetime.datetime.fromisoformat(date_end)
                     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
                     title = 'Event: {} '.format(event_id)
                     tests_to_run.append((date_start, date_end, file_prefix, title))
 
-            else:
-                print('\nEvent IDs not given, will use date_start and date_end arguments')
+            # else:
+            #     print('\nEvent IDs not given, will use date_start and date_end arguments')
 
-                date_start = datetime.datetime.fromisoformat(args.date_start)
-                date_end = datetime.datetime.fromisoformat(args.date_end)
-                file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
-                title = None
-                tests_to_run.append((date_start, date_end, file_prefix, title))
+            #     date_start = datetime.datetime.fromisoformat(args.date_start)
+            #     date_end = datetime.datetime.fromisoformat(args.date_end)
+            #     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+            #     title = None
+            #     tests_to_run.append((date_start, date_end, file_prefix, title))
 
+            if args.train_event_id is not None:
+                print('\nEvent during training IDs given')
+
+                for event_id in args.train_event_id:
+                    if event_id in EventCatalog:
+                        date_start, date_end = EventCatalog[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    elif event_id in EventCatalogTest:
+                        date_start, date_end, _ = EventCatalogTest[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    else:
+                        print('Train Event ID not found in events: {}'.format(event_id))
+                        continue
+                    date_start = datetime.datetime.fromisoformat(date_start)
+                    date_end = datetime.datetime.fromisoformat(date_end)
+                    file_prefix = 'train-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+                    title = 'Event: {} '.format(event_id)
+                    tests_to_run.append((date_start, date_end, file_prefix, title))
 
             for date_start, date_end, file_prefix, title in tests_to_run:
                 #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
