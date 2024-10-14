@@ -21,6 +21,7 @@ import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
+from events import EventCatalog as EventCatalogTest
 from events_months import EventCatalog
 
 matplotlib.use('Agg')
@@ -402,12 +403,14 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
 
     file_name = os.path.join(dir_test_plot, file_prefix)
     test_file = file_name + '.csv'
-    save_test_file(prediction_dates, #goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, 
+    save_test_file(prediction_dates, #goessgps10_predictions, goessgps100_predictions, 
+                   goesxrs_predictions, 
                     biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
                     goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, test_file)
 
     test_plot_file = file_name + '.pdf'
-    ylims = save_test_plot(context_dates, prediction_dates, training_prediction_window_end, #goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, 
+    ylims = save_test_plot(context_dates, prediction_dates, training_prediction_window_end, #goessgps10_predictions, goessgps100_predictions, 
+                           goesxrs_predictions, 
                         biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
                         goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, test_plot_file, title=title)
     return ylims
@@ -685,7 +688,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             biosentinel_predictions = prediction_batch[:, :, 1]
             # goessgps10_predictions = dataset_goes_sgps10.unnormalize_data(goessgps10_predictions).cpu().numpy()
             # goessgps100_predictions = dataset_goes_sgps100.unnormalize_data(goessgps100_predictions).cpu().numpy()
-            # goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
+            goesxrs_predictions = dataset_goes_xrs.unnormalize_data(goesxrs_predictions).cpu().numpy()
             biosentinel_predictions = dataset_rad.unnormalize_data(biosentinel_predictions).cpu().numpy()
             prediction_dates = [prediction_start_date + datetime.timedelta(minutes=i*args.delta_minutes) for i in range(prediction_window + 1)]
 
@@ -733,7 +736,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             ims['biosentinel_prediction_mean'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0))
             # ims['goessgps10_prediction_mean'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0))
             # ims['goessgps100_prediction_mean'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0))
-            # ims['goesxrs_prediction_mean'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0))
+            ims['goesxrs_prediction_mean'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0))
 
             ims['biosentinel_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) + np.std(biosentinel_predictions_primary, axis=0))
             ims['biosentinel_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(biosentinel_predictions_primary, axis=0) - np.std(biosentinel_predictions_primary, axis=0))
@@ -741,13 +744,13 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             # ims['goessgps10_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goessgps10_predictions_primary, axis=0) + np.std(goessgps10_predictions_primary, axis=0))
             # ims['goessgps100_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0) - np.std(goessgps100_predictions_primary, axis=0))
             # ims['goessgps100_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goessgps100_predictions_primary, axis=0) + np.std(goessgps100_predictions_primary, axis=0))
-            # ims['goesxrs_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) - np.std(goesxrs_predictions_primary, axis=0))
-            # ims['goesxrs_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) + np.std(goesxrs_predictions_primary, axis=0))
+            ims['goesxrs_prediction_std_lower'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) - np.std(goesxrs_predictions_primary, axis=0))
+            ims['goesxrs_prediction_std_upper'].set_data(prediction_dates_primary, np.mean(goesxrs_predictions_primary, axis=0) + np.std(goesxrs_predictions_primary, axis=0))
 
             ims['biosentinel_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0))
             # ims['goessgps10_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0))
-            # ims['goesxrs_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0))
+            ims['goesxrs_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0))
 
             ims['biosentinel_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) + np.std(biosentinel_predictions_secondary, axis=0))
             ims['biosentinel_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) - np.std(biosentinel_predictions_secondary, axis=0))
@@ -755,19 +758,19 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             # ims['goessgps10_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) + np.std(goessgps10_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) - np.std(goessgps100_predictions_secondary, axis=0))
             # ims['goessgps100_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) + np.std(goessgps100_predictions_secondary, axis=0))
-            # ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
-            # ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
+            ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
+            ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
 
             for i in range(args.num_samples):
                 ims['biosentinel_prediction_{}'.format(i)].set_data(prediction_dates_primary, biosentinel_predictions_primary[i])
                 # ims['goessgps10_prediction_{}'.format(i)].set_data(prediction_dates_primary, goessgps10_predictions_primary[i])
                 # ims['goessgps100_prediction_{}'.format(i)].set_data(prediction_dates_primary, goessgps100_predictions_primary[i])
-                # ims['goesxrs_prediction_{}'.format(i)].set_data(prediction_dates_primary, goesxrs_predictions_primary[i])
+                ims['goesxrs_prediction_{}'.format(i)].set_data(prediction_dates_primary, goesxrs_predictions_primary[i])
 
                 ims['biosentinel_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, biosentinel_predictions_secondary[i])
                 # ims['goessgps10_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goessgps10_predictions_secondary[i])
                 # ims['goessgps100_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goessgps100_predictions_secondary[i])
-                # ims['goesxrs_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goesxrs_predictions_secondary[i])
+                ims['goesxrs_prediction_{}_secondary'.format(i)].set_data(prediction_dates_secondary, goesxrs_predictions_secondary[i])
 
             pbar.set_description('Frame {}'.format(prediction_start_date))
             pbar.update(1)
@@ -949,7 +952,7 @@ def main():
     parser.add_argument('--data_dir', type=str, required=True, help='Root directory with datasets')#/mnt/disks/hl-dosi-datasets/data/
     #parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
-    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2'], default='CRaTER-D1D2', help='Radiation instrument')
+    parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2','BPD'], default='CRaTER-D1D2', help='Radiation instrument')
     parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
     parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
     parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
@@ -974,10 +977,10 @@ def main():
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
-    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    #parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
     parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
 
     parser.add_argument('--model_file', type=str, help='Model file')
@@ -1459,11 +1462,14 @@ def main():
                 print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
 
                 for event_id in args.test_event_id:
-                    if event_id not in EventCatalog:
+                    if event_id in EventCatalog:
+                        date_start, date_end = EventCatalog[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    elif event_id in EventCatalogTest:
+                        date_start, date_end, _ = EventCatalogTest[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    else:
                         raise ValueError('Event ID not found in events: {}'.format(event_id))
-                    date_start, date_end = EventCatalog[event_id]
-                    print('\nEvent ID: {}'.format(event_id))
-
                     date_start = datetime.datetime.fromisoformat(date_start)
                     date_end = datetime.datetime.fromisoformat(date_end)
                     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
