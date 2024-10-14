@@ -967,11 +967,11 @@ def main():
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
-    #parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
     parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
-    # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
+    # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
+    parser.add_argument('--train_event_id', nargs='+', default=None, help='Test event IDs seen during training')  #'biosentinel07','biosentinel08','biosentinel14','biosentinel15'
 
     parser.add_argument('--model_file', type=str, help='Model file')
     parser.add_argument('--multiples_prediction_window', type=int, default=1, help='multiples_prediction_window')
@@ -1453,7 +1453,7 @@ def main():
 
             tests_to_run = []
             if args.test_event_id is not None:
-                print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
+                #print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
 
                 for event_id in args.test_event_id:
                     if event_id in EventCatalog:
@@ -1463,22 +1463,41 @@ def main():
                         date_start, date_end, _ = EventCatalogTest[event_id]
                         print('\nEvent ID: {}'.format(event_id))
                     else:
-                        raise ValueError('Event ID not found in events: {}'.format(event_id))
+                        print('Event ID not found in events: {}'.format(event_id))
+                        continue
                     date_start = datetime.datetime.fromisoformat(date_start)
                     date_end = datetime.datetime.fromisoformat(date_end)
                     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
                     title = 'Event: {} '.format(event_id)
                     tests_to_run.append((date_start, date_end, file_prefix, title))
 
-            else:
-                print('\nEvent IDs not given, will use date_start and date_end arguments')
+            # else:
+            #     print('\nEvent IDs not given, will use date_start and date_end arguments')
 
-                date_start = datetime.datetime.fromisoformat(args.date_start)
-                date_end = datetime.datetime.fromisoformat(args.date_end)
-                file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
-                title = None
-                tests_to_run.append((date_start, date_end, file_prefix, title))
+            #     date_start = datetime.datetime.fromisoformat(args.date_start)
+            #     date_end = datetime.datetime.fromisoformat(args.date_end)
+            #     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+            #     title = None
+            #     tests_to_run.append((date_start, date_end, file_prefix, title))
 
+            if args.train_event_id is not None:
+                print('\nEvent during training IDs given')
+
+                for event_id in args.train_event_id:
+                    if event_id in EventCatalog:
+                        date_start, date_end = EventCatalog[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    elif event_id in EventCatalogTest:
+                        date_start, date_end, _ = EventCatalogTest[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    else:
+                        print('Train Event ID not found in events: {}'.format(event_id))
+                        continue
+                    date_start = datetime.datetime.fromisoformat(date_start)
+                    date_end = datetime.datetime.fromisoformat(date_end)
+                    file_prefix = 'train-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
+                    title = 'Event: {} '.format(event_id)
+                    tests_to_run.append((date_start, date_end, file_prefix, title))
 
             for date_start, date_end, file_prefix, title in tests_to_run:
                 #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
