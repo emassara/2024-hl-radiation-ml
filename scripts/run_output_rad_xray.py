@@ -977,11 +977,11 @@ def main():
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
-    #parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
     parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
-    # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
+    # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
+    parser.add_argument('--train_event_id', nargs='+', default=None, help='Test event IDs seen during training')  #'biosentinel07','biosentinel08','biosentinel14','biosentinel15'
 
     parser.add_argument('--model_file', type=str, help='Model file')
     parser.add_argument('--multiples_prediction_window', type=int, default=1, help='multiples_prediction_window')
