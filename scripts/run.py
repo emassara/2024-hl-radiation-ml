@@ -21,6 +21,7 @@ import sunpy.visualization.colormaps as sunpycm
 
 from datasets import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
 from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
+from events import EventCatalog as EventCatalogTest
 from events_months import EventCatalog
 
 matplotlib.use('Agg')
@@ -316,7 +317,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     return ylims
 
 
-def run_test(model, main_study_dir, date_start, date_end, file_prefix, title, args):
+def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     # data_dir_goes_sgps = os.path.join(args.data_dir, args.goes_sgps_file)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
@@ -399,7 +400,7 @@ def run_test(model, main_study_dir, date_start, date_end, file_prefix, title, ar
     goesxrs_ground_truth_values = dataset_goes_xrs.unnormalize_data(goesxrs_ground_truth_values)
     biosentinel_ground_truth_values = dataset_rad.unnormalize_data(biosentinel_ground_truth_values)
 
-    file_name = main_study_dir + '/test/plots/' + file_prefix
+    file_name = os.path.join(dir_test_plot, file_prefix)
     test_file = file_name + '.csv'
     save_test_file(prediction_dates, #goessgps10_predictions, goessgps100_predictions, goesxrs_predictions, 
                     biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
@@ -412,7 +413,7 @@ def run_test(model, main_study_dir, date_start, date_end, file_prefix, title, ar
     return ylims
 
 
-def run_test_video(model, main_study_dir, date_start, date_end, file_prefix, title_prefix, ylims, args):
+def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title_prefix, ylims, args):
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
     data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
@@ -663,7 +664,7 @@ def run_test_video(model, main_study_dir, date_start, date_end, file_prefix, tit
                 # context_goessgps10 = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
                 # context_goessgps100 = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_goesxrs = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
-                context_rad = full_sequence[1][context_start:context_end+1].unsqueeze(1).to(args.device)
+                context_rad = full_sequence[2][context_start:context_end+1].unsqueeze(1).to(args.device)
                 context_data = torch.cat([context_goesxrs, context_rad], dim=1)
                 context_data_batch = context_data.unsqueeze(0)
                 prediction_batch = model.predict(context_sdo_batch, context_data_batch, prediction_window, num_samples=args.num_samples).detach()
@@ -775,7 +776,7 @@ def run_test_video(model, main_study_dir, date_start, date_end, file_prefix, tit
         plt.tight_layout(rect=[0, 0, 1, 1.005])
         anim = animation.FuncAnimation(fig, run, interval=300, frames=num_frames)
         
-        file_name = main_study_dir + '/test/plots/' + file_prefix
+        file_name = os.path.join(dir_test_plot, file_prefix)
         file_name_mp4 = file_name + '.mp4'
         print('Saving video to {}'.format(file_name_mp4))
         writer_mp4 = animation.FFMpegWriter(fps=15)
@@ -966,10 +967,10 @@ def main():
     parser.add_argument('--mode', type=str, choices=['train', 'test'], help='Mode', required=True)
     parser.add_argument('--date_start', type=str, default='2022-11-16T11:00:00', help='Start date') #default='2022-11-16T11:00:00' '2017-02-07T00:00:00'
     parser.add_argument('--date_end', type=str, default='2024-05-14T09:15:00', help='End date')     #default='2024-05-14T09:15:00' '2024-05-31T23:59:59'
-    parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
+    #parser.add_argument('--test_event_id', nargs='+', default=['test14','test15'], help='Test event IDs')
     parser.add_argument('--valid_event_id', nargs='+', default=['valid14','valid15'], help='Validation event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=['biosentinel04', 'biosentinel15', 'biosentinel18'], help='Test event IDs seen during training')
-    # parser.add_argument('--test_event_id', nargs='+', default=['biosentinel06'], help='Test event IDs')
+    parser.add_argument('--test_event_id', nargs='+', default=['biosentinel04','biosentinel05','biosentinel18','biosentinel19'], help='Test event IDs')
     # parser.add_argument('--test_seen_event_id', nargs='+', default=None, help='Test event IDs seen during training')
 
     parser.add_argument('--model_file', type=str, help='Model file')
@@ -1455,11 +1456,14 @@ def main():
                 print('\nEvent IDs given, will ignore date_start and date_end arguments and use event dates')
 
                 for event_id in args.test_event_id:
-                    if event_id not in EventCatalog:
+                    if event_id in EventCatalog:
+                        date_start, date_end = EventCatalog[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    elif event_id in EventCatalogTest:
+                        date_start, date_end, _ = EventCatalogTest[event_id]
+                        print('\nEvent ID: {}'.format(event_id))
+                    else:
                         raise ValueError('Event ID not found in events: {}'.format(event_id))
-                    date_start, date_end = EventCatalog[event_id]
-                    print('\nEvent ID: {}'.format(event_id))
-
                     date_start = datetime.datetime.fromisoformat(date_start)
                     date_end = datetime.datetime.fromisoformat(date_end)
                     file_prefix = 'test-event-{}-{}'.format(date_start.strftime('%Y%m%d%H%M'), date_end.strftime('%Y%m%d%H%M'))
