@@ -797,7 +797,10 @@ def save_loss_plot(train_losses, valid_losses, plot_file):
     plt.savefig(plot_file)    
 
 
-def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args):
+def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, file_prefix, args):
+    
+    event_prefix = file_prefix.split("-")[0]
+    
     data_dir_sdo = os.path.join(args.data_dir, args.sdo_dir)
     data_dir_goes_xrs = os.path.join(args.data_dir, args.goes_xrs_file)
     data_dir_radlab = os.path.join(args.data_dir, args.radlab_file)
@@ -878,12 +881,12 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, ar
             prediction_start_date = full_dates[prediction_start]
 
             if not prediction_start_date.day == current_now_day.day:
-                file_rad = main_study_dir+'/test/saved_predictions/{}-rad_pred-{}-{}wprediction.npy'.format(file_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                file_rad = dir_test_pred +'/{}-rad_pred-{}-{}wprediction.npy'.format(event_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_rad)
                 biosentinel_p = np.array(biosentinel_p)
                 np.save(file_rad,biosentinel_p)
 
-                file_dates = main_study_dir+'/test/saved_predictions/{}-dates-{}-{}wprediction.npy'.format(file_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                file_dates = dir_test_pred +'/{}-dates-{}-{}wprediction.npy'.format(event_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
                 print('Saving into...',file_dates)
                 dates_p = np.array(dates_p)
                 np.save(file_dates,dates_p)
@@ -1446,7 +1449,9 @@ def main():
             dir_model_epoch = args.model_file.split("/")[-1].split(".")[0]
             dir_test_plot = main_study_dir+'/'+'test/plots/'+dir_model_epoch
             os.makedirs(dir_test_plot, exist_ok=True)
-            
+            dir_test_pred = main_study_dir+'/test/saved_predictions/'+dir_model_epoch
+            os.makedirs(dir_test_pred, exist_ok=True)
+
             model, _, _, _, _, _ = load_model(args.model_file, device)
             model.train() # set to train mode to use MC dropout
             model.to(device)
@@ -1500,9 +1505,9 @@ def main():
                     tests_to_run.append((date_start, date_end, file_prefix, title))
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                #save_test_numpy(model, date_start, date_end, main_study_dir, file_prefix, args)
-                plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
-                run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
+                save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, file_prefix, args)
+                #plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
+                #run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
 
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))
