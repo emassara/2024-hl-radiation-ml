@@ -19,7 +19,9 @@ import matplotlib.animation as animation
 import glob
 import sunpy.visualization.colormaps as sunpycm
 
-from datasets import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
+## TODO implement shuffling of SDOML-lite
+from datasets_shuffle_rnd import SDOMLlite, SDOCore, RadLab, GOESXRS, GOESSGPS, Sequences, UnionDataset
+
 from models import RadRecurrent, RadRecurrentWithSDO, RadRecurrentWithSDOCore
 from events import EventCatalog as EventCatalogTest
 from events_months import EventCatalog
@@ -956,9 +958,9 @@ def main():
     #parser.add_argument('--sdo_dir', type=str, default='sdoml-lite', help='SDOML-lite directory')
     parser.add_argument('--solar_dataset', type=str, choices=['SDOMLlite', 'SDOCore'], default='SDOMLlite', help='Solar dataset type')
     parser.add_argument('--rad_inst', type=str, choices=['CRaTER-D1D2','BPD'], default='CRaTER-D1D2', help='Radiation instrument')
-    parser.add_argument('--sdo_random_data', action='store_true', help='Use fake SDO data (for ablation study)')
-    parser.add_argument('--xray_random_data', action='store_true', help='Use fake xray data (for ablation study)')
-    parser.add_argument('--rad_random_data', action='store_true', help='Use fake radiation data (for ablation study)')
+    parser.add_argument('--sdo_random_data', action='store_true', help='Use shuffled SDO data (for ablation study)')
+    parser.add_argument('--xray_random_data', action='store_true', help='Use shuffled xray data (for ablation study)')
+    parser.add_argument('--rad_random_data', action='store_true', help='Use shuffled radiation data (for ablation study)')
     # parser.add_argument('--sdo_only_context', action='store_true', help='Use only SDO data for context') ## Taking a different approach (i.e. passing random_data) for ablation study instead of using this flag
     parser.add_argument('--radlab_file', type=str, default='radlab-private/RadLab-20240625-duck-corrected.db', help='RadLab file') #USE CORRECTED once Rutuja updates it
     parser.add_argument('--goes_xrs_file', type=str, default='goes/goes-xrs.csv', help='GOES XRS file')
@@ -1002,11 +1004,11 @@ def main():
     if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
         study_id = "study--solar-rad-xray_to_rad-xray" ## This is the "max" study
     elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
-        study_id = "study--solar-xray_to_rad-xray"
+        study_id = "study--shuffle_solar-xray_to_rad-xray"
     elif not args.sdo_random_data and args.xray_random_data and not args.rad_random_data:
-        study_id = "study--solar-rad_to_rad-xray"
+        study_id = "study--shuffle_solar-rad_to_rad-xray"
     elif args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
-        study_id = "study--rad-xray_to_rad-xray"
+        study_id = "study--shuffle_rad-xray_to_rad-xray"
     
     ## Create the study directory with the folder structure as decided: /home/username/2024-hl-radiation-ml/results/solar-inst[SDOCORE]/rad-inst[CRaTER]/study–solar-rad-xray_to_rad
     main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}/{args.date_start}-{args.date_end}"
