@@ -201,7 +201,7 @@ def save_test_file(prediction_dates, goesxrs_predictions, biosentinel_prediction
                                             goesxrs_ground_truth_value, biosentinel_ground_truth_value))
             
 
-def save_test_plot(context_dates, prediction_dates, training_prediction_window_end, goesxrs_predictions, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name, title=None):
+def save_test_plot(context_dates, prediction_dates, training_prediction_window_end, goesxrs_predictions, biosentinel_predictions, goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, file_name, args, title=None):
     print('Saving test plot: {}'.format(file_name))
     fig, axs = plt.subplot_mosaic([['biosentinel'],['goesxrs']], figsize=(20, 10), height_ratios=[1,1])
 
@@ -219,7 +219,7 @@ def save_test_plot(context_dates, prediction_dates, training_prediction_window_e
     prediction_mean_alpha = 0.66
 
     ax = axs['biosentinel']
-    ax.set_title('Biosentinel BPD')
+    ax.set_title(args.rad_inst)
     ax.set_ylabel('Absorbed dose rate\n[μGy/min]')
     ax.yaxis.set_label_position("right")
     ax.plot(biosentinel_ground_truth_dates, biosentinel_ground_truth_values, color=colors['biosentinel'], label='Ground truth', alpha=0.75)
@@ -412,7 +412,7 @@ def run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_pr
     ylims = save_test_plot(context_dates, prediction_dates, training_prediction_window_end, #goessgps10_predictions, goessgps100_predictions, 
                            goesxrs_predictions, 
                         biosentinel_predictions, #goessgps10_ground_truth_dates, goessgps10_ground_truth_values, goessgps100_ground_truth_dates, goessgps100_ground_truth_values, 
-                        goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, test_plot_file, title=title)
+                        goesxrs_ground_truth_dates, goesxrs_ground_truth_values, biosentinel_ground_truth_dates, biosentinel_ground_truth_values, test_plot_file, args, title=title)
     return ylims
 
 
@@ -516,7 +516,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
 
     ax = axs['biosentinel']
     # ax.set_title('Biosentinel BPD')
-    ax.text(0.005, 0.96, 'BioSentinel absorbed dose rate', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    ax.text(0.005, 0.96, '%s absorbed dose rate'%args.rad_inst, ha='left', va='top', transform=ax.transAxes, fontsize=12)
     ax.set_ylabel('μGy/min')
     ax.yaxis.set_label_position("right")
     ax.plot(biosentinel_ground_truth_dates, biosentinel_ground_truth_values, color=colors['biosentinel'], alpha=0.75, label='Ground truth')
@@ -875,6 +875,8 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
     biosentinel_p = []
     goes_xray_p = []
     dates_p = []
+    biosentinel_t = []
+    goes_xray_t = []
     with tqdm(total=num_frames) as pbar:
         for i in range(num_frames):
             context_start = i # sliding context
@@ -900,9 +902,21 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
                 dates_p = np.array(dates_p)
                 np.save(file_dates,dates_p)
 
+                file_rad_truth = dir_test_pred +'/{}-rad_truth-{}-{}wprediction.npy'.format(event_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                print('Saving into...',file_rad_truth)
+                biosentinel_t = np.array(biosentinel_t)
+                np.save(file_rad_truth,biosentinel_t)
+
+                file_xray_truth = dir_test_pred +'/{}-xray_truth-{}-{}wprediction.npy'.format(event_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                print('Saving into...',file_xray_truth)
+                goes_xray_t = np.array(goes_xray_t)
+                np.save(file_xray_truth,goes_xray_t)
+
                 dates_p = []
                 biosentinel_p = []
                 goes_xray_p = []
+                biosentinel_t = []
+                goes_xray_t = []
                 current_now_day = full_dates[prediction_start]
 
             if isinstance(model, RadRecurrentWithSDO):
@@ -944,10 +958,26 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
             pbar.update(1)
     
             biosentinel_p.append(biosentinel_predictions)
-            #goesxrs_p.append(goesxrs_predictions)
+            goes_xray_p.append(goesxrs_predictions)
             dates_p.append(np.reshape(np.tile(prediction_dates,args.num_samples),(args.num_samples,len(prediction_dates))))
             
-    
+            biosentinel_array = []
+            goesxrs_array = []
+            for i_date in prediction_dates:
+                if i_date in goesxrs_ground_truth_dates:
+                    goesxrs_array.append(goesxrs_ground_truth_values[goesxrs_ground_truth_dates.index(i_date)])
+                else:
+                    goesxrs_array.append(float('nan'))
+                if i_date in biosentinel_ground_truth_dates:
+                    biosentinel_array.append(biosentinel_ground_truth_values[biosentinel_ground_truth_dates.index(i_date)])
+                else:
+                    biosentinel_array.append(float('nan'))
+            biosentinel_array = np.array(biosentinel_array)
+            goesxrs_array = np.array(goesxrs_array)
+            biosentinel_t.append(biosentinel_array)
+            goes_xray_t.append(goesxrs_array)
+
+
 def main():
     description = 'FDL-X 2024, Radiation Team, preliminary machine learning experiments'
     parser = argparse.ArgumentParser(description=description)

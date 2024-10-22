@@ -513,7 +513,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
 
     ax = axs['biosentinel']
     # ax.set_title('Biosentinel BPD')
-    ax.text(0.005, 0.96, 'BioSentinel absorbed dose rate', ha='left', va='top', transform=ax.transAxes, fontsize=12)
+    ax.text(0.005, 0.96, '%s absorbed dose rate'%args.rad_inst, ha='left', va='top', transform=ax.transAxes, fontsize=12)
     ax.set_ylabel('μGy/min')
     ax.yaxis.set_label_position("right")
     ax.plot(biosentinel_ground_truth_dates, biosentinel_ground_truth_values, color=colors['biosentinel'], alpha=0.75, label='Ground truth')
@@ -870,6 +870,7 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
 
     current_now_day = full_dates[model.context_window - 1]
     biosentinel_p = []
+    biosentinel_t = []
     dates_p = []
     with tqdm(total=num_frames) as pbar:
         for i in range(num_frames):
@@ -891,8 +892,14 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
                 dates_p = np.array(dates_p)
                 np.save(file_dates,dates_p)
 
+                file_rad_truth = dir_test_pred +'/{}-rad_truth-{}-{}wprediction.npy'.format(event_prefix,current_now_day.strftime('%Y%m%d'),args.multiples_prediction_window)
+                print('Saving into...',file_rad_truth)
+                biosentinel_t = np.array(biosentinel_t)
+                np.save(file_rad_truth,biosentinel_t)
+
                 dates_p = []
                 biosentinel_p = []
+                biosentinel_t = []
                 current_now_day = full_dates[prediction_start]
 
             if isinstance(model, RadRecurrentWithSDO):
@@ -937,6 +944,15 @@ def save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, 
             #goesxrs_p.append(goesxrs_predictions)
             dates_p.append(np.reshape(np.tile(prediction_dates,args.num_samples),(args.num_samples,len(prediction_dates))))
             
+            biosentinel_array = []
+            for i_date in prediction_dates:
+                if i_date in biosentinel_ground_truth_dates:
+                    biosentinel_array.append(biosentinel_ground_truth_values[biosentinel_ground_truth_dates.index(i_date)])
+                else:
+                    biosentinel_array.append(float('nan'))
+            biosentinel_array = np.array(biosentinel_array)
+            biosentinel_t.append(biosentinel_array)
+
     
 def main():
     description = 'FDL-X 2024, Radiation Team, preliminary machine learning experiments'
