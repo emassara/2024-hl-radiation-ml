@@ -40,6 +40,7 @@ def main():
 
     parser.add_argument('--model_file', type=str, help='Model file')
     parser.add_argument('--multiples_prediction_window', type=int, default=1, help='multiples_prediction_window')
+    parser.add_argument('--output', type=str, choices=['rad-xray','rad'], required=True, help='type of output')
 
     args = parser.parse_args()
     if args.solar_dataset == 'SDOMLlite':
@@ -51,14 +52,24 @@ def main():
     os.makedirs(args.target_dir, exist_ok=True)
 
     ## Create the ablation study ids
-    if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
-        study_id = "study--solar-rad-xray_to_rad-xray" ## This is the "max" study
-    elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
-        study_id = "study--solar-xray_to_rad-xray"
-    elif not args.sdo_random_data and args.xray_random_data and not args.rad_random_data:
-        study_id = "study--solar-rad_to_rad-xray"
-    elif args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
-        study_id = "study--rad-xray_to_rad-xray"
+    if args.output=='rad-xray':
+        if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
+            study_id = "study--solar-rad-xray_to_rad-xray" ## This is the "max" study
+        elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
+            study_id = "study--solar-xray_to_rad-xray"
+        elif not args.sdo_random_data and args.xray_random_data and not args.rad_random_data:
+            study_id = "study--solar-rad_to_rad-xray"
+        elif args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
+            study_id = "study--rad-xray_to_rad-xray"
+    elif args.output=='rad':
+        if not args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
+            study_id = "study--solar-rad-xray_to_rad" ## This is the "max" study
+        elif not args.sdo_random_data and not args.xray_random_data and args.rad_random_data:
+            study_id = "study--solar-xray_to_rad"
+        elif not args.sdo_random_data and args.xray_random_data and not args.rad_random_data:
+            study_id = "study--solar-rad_to_rad"
+        elif args.sdo_random_data and not args.xray_random_data and not args.rad_random_data:
+            study_id = "study--rad-xray_to_rad"
     
     ## Study directory with the folder structure as decided: /home/username/2024-hl-radiation-ml/results/solar-inst[SDOCORE]/rad-inst[CRaTER]/study–solar-rad-xray_to_rad
     main_study_dir = args.target_dir+f"/solar-dataset[{args.solar_dataset}]/rad-inst[{args.rad_inst}]/{study_id}/{args.date_start}-{args.date_end}"
