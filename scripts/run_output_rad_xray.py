@@ -486,10 +486,11 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
     #colors['goessgps100'] = 'darkorange'
     colors['goesxrs'] = 'purple'
     colors['prediction'] = 'red'
-    colors['prediction_mean'] = 'darkred'
+    colors['prediction_mean'] = 'orange' #'darkred'
+    colors['nowtime'] = 'black'
 
-    prediction_alpha = 0.08
-    prediction_mean_alpha = 0.55
+    prediction_alpha = 0.15 #0.08
+    prediction_mean_alpha = 0.8 #0.55
     prediction_secondary_alpha = prediction_alpha * 0.5
     prediction_secondary_mean_alpha =prediction_mean_alpha * 0.5
 
@@ -527,7 +528,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
     ax.set_yscale('log')    
     # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
     ims['biosentinel_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
-    ims['biosentinel_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
+    ims['biosentinel_prediction_start'] = ax.axvline(prediction_start, color=colors['nowtime'], linestyle='-', linewidth=1.5) # Context end / Prediction start
     ims['biosentinel_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
     # ims['biosentinel_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['biosentinel'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
@@ -623,7 +624,7 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
     ax.xaxis.set_major_formatter(myFmt)
     # ax.xaxis.set_major_locator(plt.MaxNLocator(num_ticks))
     ims['goesxrs_context_start'] = ax.axvline(context_start, color=colors['prediction'], linestyle='--', linewidth=1) # Context start
-    ims['goesxrs_prediction_start'] = ax.axvline(prediction_start, color=colors['prediction'], linestyle='-', linewidth=1.5) # Context end / Prediction start
+    ims['goesxrs_prediction_start'] = ax.axvline(prediction_start, color=colors['nowtime'], linestyle='-', linewidth=1.5) # Context end / Prediction start
     ims['goesxrs_training_prediction_end'] = ax.axvline(training_prediction_end, color=colors['prediction'], linestyle='--', linewidth=1) # Prediction end
     ims['goesxrs_now_text'] = ax.text(prediction_start + datetime.timedelta(minutes=5), ylims['goesxrs'][0], 'Now',verticalalignment='bottom', horizontalalignment='left')
     # prediction plots
@@ -752,14 +753,14 @@ def run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, f
             # ims['goessgps100_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0))
             ims['goesxrs_prediction_mean_secondary'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0))
 
-            ims['biosentinel_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) + np.std(biosentinel_predictions_secondary, axis=0))
-            ims['biosentinel_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) - np.std(biosentinel_predictions_secondary, axis=0))
-            # ims['goessgps10_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) - np.std(goessgps10_predictions_secondary, axis=0))
-            # ims['goessgps10_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) + np.std(goessgps10_predictions_secondary, axis=0))
-            # ims['goessgps100_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) - np.std(goessgps100_predictions_secondary, axis=0))
-            # ims['goessgps100_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) + np.std(goessgps100_predictions_secondary, axis=0))
-            ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
-            ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
+            # ims['biosentinel_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) + np.std(biosentinel_predictions_secondary, axis=0))
+            # ims['biosentinel_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(biosentinel_predictions_secondary, axis=0) - np.std(biosentinel_predictions_secondary, axis=0))
+            # # ims['goessgps10_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) - np.std(goessgps10_predictions_secondary, axis=0))
+            # # ims['goessgps10_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps10_predictions_secondary, axis=0) + np.std(goessgps10_predictions_secondary, axis=0))
+            # # ims['goessgps100_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) - np.std(goessgps100_predictions_secondary, axis=0))
+            # # ims['goessgps100_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goessgps100_predictions_secondary, axis=0) + np.std(goessgps100_predictions_secondary, axis=0))
+            # ims['goesxrs_prediction_std_secondary_lower'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) - np.std(goesxrs_predictions_secondary, axis=0))
+            # ims['goesxrs_prediction_std_secondary_upper'].set_data(prediction_dates_secondary, np.mean(goesxrs_predictions_secondary, axis=0) + np.std(goesxrs_predictions_secondary, axis=0))
 
             for i in range(args.num_samples):
                 ims['biosentinel_prediction_{}'.format(i)].set_data(prediction_dates_primary, biosentinel_predictions_primary[i])
@@ -1541,9 +1542,9 @@ def main():
                     tests_to_run.append((date_start, date_end, file_prefix, title))
 
             for date_start, date_end, file_prefix, title in tests_to_run:
-                save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, file_prefix, args)
-                #plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
-                #run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
+                #save_test_numpy(model, date_start, date_end, main_study_dir, dir_test_pred, file_prefix, args)
+                plot_ylims = run_test(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, args)
+                run_test_video(model, main_study_dir, dir_test_plot, date_start, date_end, file_prefix, title, plot_ylims, args)
 
 
         print('\nEnd time: {}'.format(datetime.datetime.now()))
