@@ -160,12 +160,17 @@ def main():
     axs = []
     axs.append(fig.add_subplot(gs[0]))
     x_list = np.arange(len(var_rad))*15/60
-    axs[0].set_xlabel(r"Hours from Now-time")
+    axs[0].set_xlabel(r"Hours from present time")
     axs[0].set_ylabel(r"Error [$\mu$Gr/hr]")
-    axs[0].plot(x_list,mse_rad**0.5,label="RMSE")
-    axs[0].plot(x_list,mse_rad_events**0.5,label="RMSE during events")
+    axs[0].plot(x_list[x_list<=10],mse_rad[x_list<=10]**0.5,label="RMSE",color='C0')
+    axs[0].plot(x_list[x_list<=10],mse_rad_events[x_list<=10]**0.5,label="RMSE during events",color='C1')
+    axs[0].plot(x_list[x_list>=10],mse_rad[x_list>=10]**0.5,alpha=0.5,color='C0')
+    axs[0].plot(x_list[x_list>=10],mse_rad_events[x_list>=10]**0.5,alpha=0.5,color='C1')
     axs[0].fill_between(x_list,var_rad**0.5,label="Model uncertainty - 1 std",color='k',alpha=0.4)
     axs[0].fill_between(x_list,2*var_rad**0.5,label="Model uncertainty - 2 std",color='k',alpha=0.2)
+    #axs[0].fill_between(x_list[x_list>=10],np.ones(len(x_list[x_list>=10]))+700,color='grey',alpha=0.1)
+    axs[0].axvspan(10, 30, alpha=0.1, color='grey')
+    axs[0].axvline(10,color='k',lw=0.6,ls='--')
     axs[0].legend(loc = "upper left",
                 prop={'size':10})
     plt.savefig(dir_test_plot+'/fig_test_error-time_from_nowtime_%dwprediction.pdf'%args.multiples_prediction_window)
