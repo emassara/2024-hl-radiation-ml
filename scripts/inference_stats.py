@@ -140,12 +140,12 @@ def main():
     var_rad_mean = np.mean((mean_rad_nowtime-mean_ground_truth)**2,axis=0)
     r_squared = 1 - mse_rad/var_rad_mean
     # events only
-    mean_ground_truth_events = np.nanmean(truth_rad[test_events]) # consider multiple time each timestamp as inside each datapoint in event time
-    var_rad_mean_events = np.mean((mean_rad_nowtime_events-mean_ground_truth_events)**2,axis=0)
+    #mean_ground_truth_events = np.nanmean(truth_rad[test_events]) # consider multiple time each timestamp as inside each datapoint in event time
+    var_rad_mean_events = np.mean((mean_rad_nowtime_events-mean_ground_truth)**2,axis=0)
     r_squared_events = 1 - mse_rad_events/var_rad_mean_events
 
     print('ground truth mean of all test set and during events only:')
-    print(mean_ground_truth,mean_ground_truth_events)
+    #print(mean_ground_truth,mean_ground_truth_events)
 
 
     ### FIGURE RMSE + STD MODEL ###
@@ -183,10 +183,10 @@ def main():
     # axs[0].plot(x_list,var_rad_mean)
     axs[0].plot(x_list[x_list<=10],r_squared[x_list<=10],label="All times in test set",color='C0')
     axs[0].plot(x_list[x_list<=10],r_squared_events[x_list<=10],label="Event times in test set",color='C1')
-    axs[0].plot(x_list[x_list>=10],r_squared[x_list>=10],alpha=0.5,color='C0')
-    axs[0].plot(x_list[x_list>=10],r_squared_events[x_list>=10],alpha=0.5,color='C1')
-    axs[0].axvspan(10, 30, alpha=0.1, color='grey')
-    axs[0].axvline(10,color='k',lw=0.6,ls='--')
+    #axs[0].plot(x_list[x_list>=10],r_squared[x_list>=10],alpha=0.5,color='C0')
+    #axs[0].plot(x_list[x_list>=10],r_squared_events[x_list>=10],alpha=0.5,color='C1')
+    #axs[0].axvspan(10, 30, alpha=0.1, color='grey')
+    #axs[0].axvline(10,color='k',lw=0.6,ls='--')
     axs[0].legend(loc = "upper right",
                 prop={'size':10})
     plt.savefig(dir_test_plot+'/fig_test_rsquared-time_from_nowtime_%dwprediction.pdf'%args.multiples_prediction_window)
