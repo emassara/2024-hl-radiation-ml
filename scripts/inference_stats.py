@@ -78,7 +78,7 @@ def main():
     dir_test_pred = main_study_dir+'/test/saved_predictions/'+dir_model_epoch
     dir_test_plot = main_study_dir+'/'+'test/plots/'+dir_model_epoch
 
-    ## Read the predicitons
+    ## Read the predicitons of the form [# now_times, # dropuot_realizations, # prediction_timestamps]
     list_radp_filename = [filename for filename in os.listdir(dir_test_pred) if filename.startswith("test-rad_pred") and filename.endswith("%dwprediction.npy"%args.multiples_prediction_window)]                            
     list_radp_filename.sort()
     data_rad = np.empty((0,args.num_samples,args.prediction_window*args.multiples_prediction_window+1))
@@ -86,12 +86,6 @@ def main():
     for filename in list_radp_filename:
         data_i = np.load(dir_test_pred+'/'+filename,allow_pickle=True)
         data_rad = np.append(data_rad,data_i,axis=0)
-    # list_xrayp_filename = [filename for filename in os.listdir(dir_test_pred) if filename.startswith("test-xray_pred") and filename.endswith("%dwprediction.npy"%args.multiples_prediction_window)]      
-    # data_xray = np.empty((0,args.num_samples,args.prediction_window*args.multiples_prediction_window+1))
-    # print("%dwprediction.npy"%args.multiples_prediction_window)
-    # for filename in list_xrayp_filename:
-    #     data_i = np.load(dir_test_pred+'/'+filename,allow_pickle=True)
-    #     data_xray = np.append(data_xray,data_i,axis=0)
     
     ## Read the ground truth
     list_radt_filename = [filename for filename in os.listdir(dir_test_pred) if filename.startswith("test-rad_truth") and filename.endswith("%dwprediction.npy"%args.multiples_prediction_window)]                            
@@ -101,12 +95,6 @@ def main():
     for filename in list_radt_filename:
         data_i = np.load(dir_test_pred+'/'+filename,allow_pickle=True)
         truth_rad = np.append(truth_rad,data_i,axis=0)
-    # list_xrayt_filename = [filename for filename in os.listdir(dir_test_pred) if filename.startswith("test-xray_truth") and filename.endswith("%dwprediction.npy"%args.multiples_prediction_window)]      
-    # truth_xray = np.empty((0,args.prediction_window*args.multiples_prediction_window+1))
-    # print("%dwprediction.npy"%args.multiples_prediction_window)
-    # for filename in list_xrayt_filename:
-    #     data_i = np.load(dir_test_pred+'/'+filename,allow_pickle=True)
-    #     truth_xray = np.append(truth_xray,data_i,axis=0)
 
     ## Read the dates
     list_date_filename = [filename for filename in os.listdir(dir_test_pred) if filename.startswith("test-date") and filename.endswith("%dwprediction.npy"%args.multiples_prediction_window)]                            
@@ -116,10 +104,6 @@ def main():
     for filename in list_date_filename:
         data_i = np.load(dir_test_pred+'/'+filename,allow_pickle=True)
         date = np.append(date,data_i,axis=0)
-
-    print(list_date_filename)
-    print(list_radp_filename)
-
 
     ## get the locatios of nowtimes inside events
     test_events = np.empty(0)
@@ -151,10 +135,20 @@ def main():
     # events only
     mean_rad_nowtime_events = np.mean(data_rad[test_events],axis=1)
     mse_rad_events = np.nanmean((mean_rad_nowtime_events-truth_rad[test_events])**2,axis=0)
-    
-    print(len(np.where(truth_rad==np.nan)[0]))
-    print(truth_rad)
+    ### compute var(mean) ###
+    mean_ground_truth = np.nanmean(truth_rad) # consider multiple time each timestamp as inside each datapoint
+    var_rad_mean = np.mean((mean_rad_nowtime-mean_ground_truth)**2,axis=0)
+    r_squared = 1 - mse_rad/var_rad_mean
+    # events only
+    mean_ground_truth_events = np.nanmean(truth_rad[test_events]) # consider multiple time each timestamp as inside each datapoint in event time
+    var_rad_mean_events = np.mean((mean_rad_nowtime_events-mean_ground_truth_events)**2,axis=0)
+    r_squared_events = 1 - mse_rad_events/var_rad_mean_events
 
+    print('ground truth mean of all test set and during events only:')
+    print(mean_ground_truth,mean_ground_truth_events)
+
+
+    ### FIGURE RMSE + STD MODEL ###
     fig = figure(figsize=(7,4))
     gs = gridspec.GridSpec(1,1)
     axs = []
@@ -174,6 +168,28 @@ def main():
     axs[0].legend(loc = "upper left",
                 prop={'size':10})
     plt.savefig(dir_test_plot+'/fig_test_error-time_from_nowtime_%dwprediction.pdf'%args.multiples_prediction_window)
+
+
+    ### FIGURE Rsquared as function of hours from nowtime ###
+    fig = figure(figsize=(7,4))
+    gs = gridspec.GridSpec(1,1)
+    axs = []
+    axs.append(fig.add_subplot(gs[0]))
+    x_list = np.arange(len(var_rad))*15/60
+    axs[0].set_xlabel(r"Hours from present time")
+    axs[0].set_ylabel(r"$R^2$")
+    axs[0].set_ylim(-1,1)
+    # axs[0].plot(x_list,var_rad_mean_events)
+    # axs[0].plot(x_list,var_rad_mean)
+    axs[0].plot(x_list[x_list<=10],r_squared[x_list<=10],label="All times in test set",color='C0')
+    axs[0].plot(x_list[x_list<=10],r_squared_events[x_list<=10],label="Event times in test set",color='C1')
+    axs[0].plot(x_list[x_list>=10],r_squared[x_list>=10],alpha=0.5,color='C0')
+    axs[0].plot(x_list[x_list>=10],r_squared_events[x_list>=10],alpha=0.5,color='C1')
+    axs[0].axvspan(10, 30, alpha=0.1, color='grey')
+    axs[0].axvline(10,color='k',lw=0.6,ls='--')
+    axs[0].legend(loc = "upper right",
+                prop={'size':10})
+    plt.savefig(dir_test_plot+'/fig_test_rsquared-time_from_nowtime_%dwprediction.pdf'%args.multiples_prediction_window)
     
 
 if __name__ == "__main__":

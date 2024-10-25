@@ -100,6 +100,7 @@ events.append(('crater', '2024-03-23T08:15:00', '2024-03-23T18:20:00', 956)) # A
 events.append(('crater', '2024-05-10T13:35:00', '2024-05-10T17:45:00', 208)) # Also in biosentinel
 events.append(('crater', '2024-05-11T02:10:00', '2024-05-11T09:10:00', 116)) # Also in biosentinel
 
+
 events = pd.DataFrame(events, columns=['prefix', 'begin', 'max', 'max_pfu'])
 
 # sort by begin
@@ -132,8 +133,22 @@ for prefix in events['prefix'].unique():
         max_pfu = event['max_pfu']
         EventCatalog[event_id] = date_start, date_end, max_pfu
 
-# for event, val in EventCatalog.items():
-#     print(event, val[0], val[1], val[2])
+# added by Elena
+eventsE=[]
+eventsE.append(('craterElena1', '2017-09-04T00:00:00', '2017-09-10T23:30:00', 844))
+eventsE.append(('craterElena2', '2017-09-10T16:45:00', '2017-09-13T00:00:00', 1494))
+eventsE.append(('craterElena3', '2017-09-04T00:00:00', '2017-09-13T00:00:00', 1494))
+eventsE = pd.DataFrame(eventsE, columns=['prefix', 'date_start', 'date_end', 'max_pfu'])
+for i in range(len(eventsE)):
+    event = eventsE.iloc[i]
+    event_id = event['prefix']
+    date_start = pd.to_datetime(event['date_start'], format=format).isoformat()
+    date_end = pd.to_datetime(event['date_end'], format=format).isoformat()
+    max_pfu = event['max_pfu']
+    EventCatalog[event_id] = date_start, date_end, max_pfu
+
+for event, val in EventCatalog.items():
+    print(event, val[0], val[1], val[2])
 
 # event_id      date_start          date_end            max_pfu
 # biosentinel01 2023-02-25T06:15:00 2023-02-28T01:40:00 58
