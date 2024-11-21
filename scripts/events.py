@@ -147,8 +147,9 @@ for i in range(len(eventsE)):
     max_pfu = event['max_pfu']
     EventCatalog[event_id] = date_start, date_end, max_pfu
 
-for event, val in EventCatalog.items():
-    print(event, val[0], val[1], val[2])
+# print('Events Catalog:')
+# for event, val in EventCatalog.items():
+#     print(event, val[0], val[1], val[2])
 
 # event_id      date_start          date_end            max_pfu
 # biosentinel01 2023-02-25T06:15:00 2023-02-28T01:40:00 58

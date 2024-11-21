@@ -1,6 +1,29 @@
 import torch
 import torch.nn as nn
 
+class SelfAttention(nn.Module): ## From scratch implementation of self-attention, might be faster to use than nn.MultiheadAttention?
+    def __init__(self, embed_dim=None):
+        super(SelfAttention, self).__init__()
+        self.embed_dim = embed_dim
+        self.q_linear = nn.Linear(embed_dim, embed_dim)
+        self.k_linear = nn.Linear(embed_dim, embed_dim)
+        self.v_linear = nn.Linear(embed_dim, embed_dim)
+        self.out_linear = nn.Linear(embed_dim, embed_dim)
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x):
+        batch_size, seq_len, embed_dim = x.size()
+        q = self.q_linear(x).view(batch_size, seq_len, embed_dim) # Query
+        k = self.k_linear(x).view(batch_size, seq_len, embed_dim) # Key
+        v = self.v_linear(x).view(batch_size, seq_len, embed_dim) # Value
+        
+        attention_scores = torch.bmm(q, k.transpose(1, 2)) / (embed_dim ** 0.5) # batched matrix multiplication between query and key with scaling factor 1/sqrt(d_k)
+        attention_weights = self.softmax(attention_scores) # Softmax to get attention weights
+        
+        attended_values = torch.bmm(attention_weights, v) # batched matrix multiplication between attention weights and values
+        output = self.out_linear(attended_values)
+        
+        return output, attention_weights
 
 class SDOEmbedding(nn.Module):
     def __init__(self, channels=6, embedding_dim=512, dropout=0.2):
@@ -59,17 +82,24 @@ class SDOSequence(nn.Module):
 
 
 class RadRecurrent(nn.Module):
-    def __init__(self, data_dim=2, lstm_dim=1024, lstm_depth=2, dropout=0.2, context_window=10, prediction_window=10):
+    def __init__(self, data_dim_context=2, data_dim_predict=2, 
+                lstm_dim=1024, lstm_depth=2, 
+                dropout=0.2, 
+                use_attention=False, num_attn_heads=1,
+                context_window=10, prediction_window=10):
         super().__init__()
-        self.data_dim = data_dim
+        self.data_dim_context = data_dim_context ## no. of univariate time series in input
+        self.data_dim_predict = data_dim_predict ## no. of univariate time series in output
         self.lstm_dim = lstm_dim
         self.lstm_depth = lstm_depth
         self.dropout = dropout
+        self.use_attention = use_attention
         self.context_window = context_window # Not used within model, only for reference
         self.prediction_window = prediction_window # Not used within model, only for reference
 
-        self.lstm = nn.LSTM(input_size=data_dim, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
-        self.fc1 = nn.Linear(lstm_dim, data_dim)
+        self.lstm = nn.LSTM(input_size=data_dim_context, hidden_size=lstm_dim, num_layers=lstm_depth, dropout=dropout, batch_first=True)
+        self.attention = SelfAttention(embed_dim=lstm_dim)
+        self.fc1 = nn.Linear(lstm_dim, data_dim_predict)
         self.dropout1 = nn.Dropout(dropout)
         self.hidden = None
 
@@ -83,10 +113,12 @@ class RadRecurrent(nn.Module):
 
     def forward(self, x):
         x, self.hidden = self.lstm(x, self.hidden)
+        if self.use_attention: x, attn_weights = self.attention(x)
+        else: attn_weights = None
         x = self.dropout1(x)
         x = torch.relu(x)
         x = self.fc1(x)
-        return x
+        return x, attn_weights
     
     # loss(t_p, o_p(i_p))
     # oooooo    ooooooo
@@ -124,8 +156,8 @@ class RadRecurrentWithSDO(nn.Module):
             ):
         super().__init__()
         # self.data_dim = data_dim
-        self.data_dim_context = data_dim_context
-        self.data_dim_predict = data_dim_predict
+        self.data_dim_context = data_dim_context ## no. of univariate time series in input
+        self.data_dim_predict = data_dim_predict ## no. of univariate time series in output
         self.lstm_dim = lstm_dim
         self.lstm_depth = lstm_depth
         self.dropout = dropout
@@ -199,36 +231,63 @@ class RadRecurrentWithSDO(nn.Module):
         h, c = self.hidden_context
         self.hidden_predict = (h.repeat(1, num_samples, 1), c.repeat(1, num_samples, 1))
 
-        x = context_data[:, -1, -1].unsqueeze(1) # prepend the prediction values with the last context input
-        x = x.unsqueeze(2)
-        x = x.repeat(num_samples, 1, 1)
+        # prepend the prediction values with the last context input
+        if context_data.shape[1] > 1: ## More than 1 univariate time series
+            x = context_data[:, -1, :].unsqueeze(1) 
+        else:
+            x = context_data[:, -1, -1].unsqueeze(1)
+            x = x.unsqueeze(2)
+        
+        x = x.repeat(num_samples, 1, 1) 
         prediction = [x]
         for _ in range(prediction_window):
             x = self.forward(x)
             prediction.append(x)
         prediction = torch.cat(prediction, dim=1)
         return prediction
+
+    # def predict_rad(self, context_sdo, context_data, prediction_window, num_samples=1):
+    #     context_batch_size = context_sdo.shape[0]
+    #     if context_batch_size != 1:
+    #         raise ValueError('Batch size of context must be 1')
+    #     # context_length = context.shape[1]
+    #     # print('Running model with context shape: {}'.format(context.shape))
+    #     self.init(context_batch_size)
+    #     self.forward_context(context_sdo, context_data)
+
+    #     h, c = self.hidden_context
+    #     self.hidden_predict = (h.repeat(1, num_samples, 1), c.repeat(1, num_samples, 1))
+
+    #     x = context_data[:, -1, -1].unsqueeze(1) # prepend the prediction values with the last context input
+    #     x = x.unsqueeze(2)
+    #     x = x.repeat(num_samples, 1, 1)
+    #     prediction = [x]
+    #     for _ in range(prediction_window):
+    #         x = self.forward(x)
+    #         prediction.append(x)
+    #     prediction = torch.cat(prediction, dim=1)
+    #     return prediction
     
-    def predict_rad_xray(self, context_sdo, context_data, prediction_window, num_samples=1):
-        context_batch_size = context_sdo.shape[0]
-        if context_batch_size != 1:
-            raise ValueError('Batch size of context must be 1')
-        # context_length = context.shape[1]
-        # print('Running model with context shape: {}'.format(context.shape))
-        self.init(context_batch_size)
-        self.forward_context(context_sdo, context_data)
+    # def predict_rad_xray(self, context_sdo, context_data, prediction_window, num_samples=1):
+    #     context_batch_size = context_sdo.shape[0]
+    #     if context_batch_size != 1:
+    #         raise ValueError('Batch size of context must be 1')
+    #     # context_length = context.shape[1]
+    #     # print('Running model with context shape: {}'.format(context.shape))
+    #     self.init(context_batch_size)
+    #     self.forward_context(context_sdo, context_data)
 
-        h, c = self.hidden_context
-        self.hidden_predict = (h.repeat(1, num_samples, 1), c.repeat(1, num_samples, 1))
+    #     h, c = self.hidden_context
+    #     self.hidden_predict = (h.repeat(1, num_samples, 1), c.repeat(1, num_samples, 1))
 
-        x = context_data[:, -1, :].unsqueeze(1) # prepend the prediction values with the last context input
-        x = x.repeat(num_samples, 1, 1)
-        prediction = [x]
-        for _ in range(prediction_window):
-            x = self.forward(x)
-            prediction.append(x)
-        prediction = torch.cat(prediction, dim=1)
-        return prediction
+    #     x = context_data[:, -1, :].unsqueeze(1) # prepend the prediction values with the last context input
+    #     x = x.repeat(num_samples, 1, 1)
+    #     prediction = [x]
+    #     for _ in range(prediction_window):
+    #         x = self.forward(x)
+    #         prediction.append(x)
+    #     prediction = torch.cat(prediction, dim=1)
+    #     return prediction
 
 class RadRecurrentWithSDOCore(nn.Module):
     """
@@ -240,8 +299,8 @@ class RadRecurrentWithSDOCore(nn.Module):
                 lstm_dim=1024, lstm_depth=2, dropout=0.2, sdo_dim=21504, context_window=10, prediction_window=10):
         super().__init__()
         # self.data_dim = data_dim
-        self.data_dim_context = data_dim_context
-        self.data_dim_predict = data_dim_predict
+        self.data_dim_context = data_dim_context ## no. of univariate time series in input
+        self.data_dim_predict = data_dim_predict ## no. of univariate time series in output
         self.lstm_dim = lstm_dim
         self.lstm_depth = lstm_depth
         self.dropout = dropout

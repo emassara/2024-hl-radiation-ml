@@ -122,11 +122,11 @@ class SDOMLlite(Dataset):
         print('Frames dropped  : {:,}'.format(total_steps - len(self.dates)))
 
 
-    @lru_cache(maxsize=128) #100000)
+    @lru_cache(maxsize=100000)
     def prefix_to_date(self, prefix):
         return datetime.datetime.strptime(prefix, '%Y/%m/%d/%H%M')
     
-    @lru_cache(maxsize=128) #100000)
+    @lru_cache(maxsize=100000)
     def date_to_prefix(self, date):
         return date.strftime('%Y/%m/%d/%H%M')
 
@@ -441,7 +441,7 @@ class SDOCore(PandasDataset):
         datetime = pd.to_datetime([f"{y}-{m:02d}-{d:02d} {h:02d}:{mi:02d}" for y, m, d, h, mi in zip(years, months, days, hours, minutes)])
 
         ## Convert from float64 to float32 to save memory
-        data = pd.DataFrame(data =  {'latent': latent,
+        data = pd.DataFrame(data = {'latent': latent,
                                     'datetime': datetime})
         print('Rows                 : {:,}'.format(len(data)))
         
@@ -794,6 +794,7 @@ class TarRandomAccess():
             raise ValueError('No tar files found in data directory: {}'.format(data_dir))
         self.index = {}
         index_cache = os.path.join(tar_dir, 'tar_files_index') #changed index_cache = os.path.join(data_dir, 'tar_files_index')
+        print("index_cache: ", index_cache)
         if os.path.exists(index_cache):
             print('Loading tar files index from cache: {}'.format(index_cache))
             with open(index_cache, 'rb') as file:
